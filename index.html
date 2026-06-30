@@ -723,7 +723,23 @@ function genWA(i){
     try{
       const p=window._pac[i]
       const blob=generarBlob(p)
-      await compartirWA(blob,nombreSafe(p.nombre)+'.pdf',p.nombre)
+      let cel=(p.celular||'').replace(/\D/g,'')
+      if(cel.length===10) cel='549'+cel
+      else if(cel.length===8) cel='5492235'+cel
+      const nombre1=p.nombre.split(' ')[0]
+      const fecha=p.fecha_cirugia||p.fecha_emision||''
+      const msg=encodeURIComponent('Hola '+nombre1+'! Le avisamos que sus ordenes para la cirugia del '+fecha+' estan listas. Dr. '+p.doctor+' - CEOT Clinica Colon.')
+      if(cel.length>=11){
+        const file=new File([blob],nombreSafe(p.nombre)+'.pdf',{type:'application/pdf'})
+        if(navigator.canShare&&navigator.canShare({files:[file]})){
+          try{await navigator.share({files:[file],title:'Ordenes CEOT - '+p.nombre});toast('Listo ✓');return}
+          catch(e){if(e.name==='AbortError'){btnReset('bw'+i,'📲 Enviar CX');return}}
+        }
+        descargar(blob,nombreSafe(p.nombre)+'.pdf')
+        setTimeout(()=>window.open('https://wa.me/'+cel+'?text='+msg,'_blank'),700)
+      } else {
+        await compartirWA(blob,nombreSafe(p.nombre)+'.pdf',p.nombre)
+      }
       toast('Listo ✓')
     }catch(e){toast('Error: '+(e.message||e));console.error(e)}
     btnReset('bw'+i,'📲 Enviar CX')
