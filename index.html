@@ -443,15 +443,27 @@ function oscurecerImagen(src) {
   try {
     const img = new Image()
     img.src = src
+    const w = img.naturalWidth || 300, h = img.naturalHeight || 300
     const cv = document.createElement('canvas')
-    cv.width = img.naturalWidth || 300; cv.height = img.naturalHeight || 300
+    cv.width = w; cv.height = h
     const ctx = cv.getContext('2d')
-    // fondo blanco primero
-    ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, cv.width, cv.height)
-    // dibujar con alto contraste
-    ctx.filter = 'brightness(150%) contrast(400%)'
     ctx.drawImage(img, 0, 0)
+    const id = ctx.getImageData(0, 0, w, h)
+    const d = id.data
+    // samplear color de fondo desde esquina superior izquierda
+    const bgR=d[0], bgG=d[1], bgB=d[2]
+    for(let i=0; i<d.length; i+=4) {
+      const dr=d[i]-bgR, dg=d[i+1]-bgG, db=d[i+2]-bgB
+      const dist=Math.sqrt(dr*dr+dg*dg+db*db)
+      if(dist < 40) {
+        // es fondo → blanco
+        d[i]=255; d[i+1]=255; d[i+2]=255; d[i+3]=255
+      } else {
+        // es tinta → negro
+        d[i]=0; d[i+1]=0; d[i+2]=0; d[i+3]=255
+      }
+    }
+    ctx.putImageData(id, 0, 0)
     return cv.toDataURL('image/png')
   } catch(e) { return src }
 }
