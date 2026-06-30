@@ -439,38 +439,9 @@ function crearLogoCEOT() {
   return logoCEOTB64
 }
 
-function oscurecerImagen(src) {
-  try {
-    const img = new Image()
-    img.src = src
-    const w = img.naturalWidth || 300, h = img.naturalHeight || 300
-    const cv = document.createElement('canvas')
-    cv.width = w; cv.height = h
-    const ctx = cv.getContext('2d')
-    ctx.drawImage(img, 0, 0)
-    const id = ctx.getImageData(0, 0, w, h)
-    const d = id.data
-    // samplear color de fondo desde esquina superior izquierda
-    const bgR=d[0], bgG=d[1], bgB=d[2]
-    for(let i=0; i<d.length; i+=4) {
-      const dr=d[i]-bgR, dg=d[i+1]-bgG, db=d[i+2]-bgB
-      const dist=Math.sqrt(dr*dr+dg*dg+db*db)
-      if(dist < 40) {
-        // es fondo → blanco
-        d[i]=255; d[i+1]=255; d[i+2]=255; d[i+3]=255
-      } else {
-        // es tinta → negro
-        d[i]=0; d[i+1]=0; d[i+2]=0; d[i+3]=255
-      }
-    }
-    ctx.putImageData(id, 0, 0)
-    return cv.toDataURL('image/png')
-  } catch(e) { return src }
-}
-
 function addImgFit(doc, src, dimKey, bx, bY_rl, bW, bH) {
   if(!src) return
-  const srcOsc = oscurecerImagen(src)
+  const fmt=src.startsWith('data:image/png')?'PNG':'JPEG'
   const d=DIMS[dimKey]
   let rw=bW, rh=bH
   if(d){
@@ -479,7 +450,7 @@ function addImgFit(doc, src, dimKey, bx, bY_rl, bW, bH) {
   }
   const xi=bx+(bW-rw)/2
   const yi=(PH-bY_rl-bH)+(bH-rh)/2
-  try{doc.addImage(srcOsc,'PNG',xi,yi,rw,rh,undefined,'FAST')}catch(e){}
+  try{doc.addImage(src,fmt,xi,yi,rw,rh,undefined,'FAST')}catch(e){}
 }
 
 function drawPage(doc, p, lineas, conFechaCirugia) {
