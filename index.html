@@ -450,7 +450,7 @@ function oscurecerImagen(src) {
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, cv.width, cv.height)
     // dibujar con alto contraste
-    ctx.filter = 'contrast(300%) brightness(80%)'
+    ctx.filter = 'brightness(150%) contrast(400%)'
     ctx.drawImage(img, 0, 0)
     return cv.toDataURL('image/png')
   } catch(e) { return src }
