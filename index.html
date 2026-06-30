@@ -453,7 +453,7 @@ function oscurecerImagen(src, factor) {
     for(let i=0; i<data.length; i+=4) {
       const r=data[i], g=data[i+1], b=data[i+2], a=data[i+3]
       const luminancia=(r+g+b)/3
-      if(a < 20 || luminancia > 230) {
+      if(a < 20 || luminancia > 160) {
         // píxel blanco/transparente → dejarlo blanco opaco
         data[i]=255; data[i+1]=255; data[i+2]=255; data[i+3]=255
       } else {
