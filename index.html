@@ -195,6 +195,7 @@ input[type=text]::placeholder{color:var(--m)}
 <div class="hdr">
   <div class="hdr-ico">🏥</div>
   <div style="flex:1"><h1>Generador de Órdenes</h1><p>CEOT – Clínica Colón</p></div>
+  <div id="saludo-juli" style="font-size:13px;color:#aaa;align-self:center;margin-right:8px;white-space:nowrap"></div>
   <div class="theme-dots">
     <button class="tdot" data-theme="" style="background:#F97316" onclick="setTheme('')" title="Naranja"></button>
     <button class="tdot" data-theme="cielo" style="background:#0ea5e9" onclick="setTheme('cielo')" title="Cielo"></button>
@@ -1188,6 +1189,12 @@ function filtrarDocStats(val) {
     setTimeout(() => target.scrollIntoView({behavior:'smooth', block:'start'}), 80)
   }
 }
+;(function(){
+  const el=document.getElementById('saludo-juli')
+  if(!el) return
+  const h=new Date().getHours()
+  el.textContent = h < 12 ? '☀️ Buen día Juli!' : '🌤️ Buenas tardes Juli!'
+})()
 </script>
 </body>
 </html>
