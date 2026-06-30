@@ -509,8 +509,8 @@ function drawPage(doc, p, lineas, conFechaCirugia) {
   if(conFechaCirugia&&p.fecha_cirugia){doc.text('Fecha de cirugia: '+p.fecha_cirugia,LBL,ye);ye+=0.38}
   doc.text('Fecha: '+fecha,LBL,ye)
 
-  const sh=4.00, sw=4.00, sx=MR-sw
-  const fh=3.00, fw=5.50, fx=sx-0.20-fw
+  const sh=5.50, sw=5.50, sx=MR-sw
+  const fh=4.00, fw=6.50, fx=sx-0.20-fw
   if(sello) addImgFit(doc,sello,'s_'+sKey,sx,1.20,sw,sh)
   else if(firma) addImgFit(doc,firma,'f_'+sKey,fx,1.20,fw,fh)
 
