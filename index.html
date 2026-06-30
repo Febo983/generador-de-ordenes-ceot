@@ -508,10 +508,10 @@ function drawPage(doc, p, lineas, conFechaCirugia) {
   if(conFechaCirugia&&p.fecha_cirugia){doc.text('Fecha de cirugia: '+p.fecha_cirugia,LBL,ye);ye+=0.38}
   doc.text('Fecha: '+fecha,LBL,ye)
 
-  const sh=2.50, sw=2.50, sx=MR-sw
-  const fh=2.12, fw=4.68, fx=sx-0.20-fw
-  if(sello) addImgFit(doc,sello,'s_'+sKey,sx,1.00,sw,sh)
-  else if(firma) addImgFit(doc,firma,'f_'+sKey,fx,1.00,fw,fh)
+  const sh=4.00, sw=4.00, sx=MR-sw
+  const fh=3.00, fw=5.50, fx=sx-0.20-fw
+  if(sello) addImgFit(doc,sello,'s_'+sKey,sx,1.20,sw,sh)
+  else if(firma) addImgFit(doc,firma,'f_'+sKey,fx,1.20,fw,fh)
 
   doc.setDrawColor(0); doc.setLineWidth(0.6*PT); doc.line(ML,21.10,MR,21.10)
   doc.setFont('helvetica','bold'); doc.setFontSize(5); doc.setTextColor(0)
@@ -563,8 +563,8 @@ function drawPagePreq(doc, p, lineas) {
   // Sello y firma del doctor
   const sKeyP=normalizar(p.doctor)
   const selloP=getSello(p.doctor), firmaP=getFirma(p.doctor)
-  const shP=2.50, swP=2.50, sxP=MR-swP
-  const fhP=2.12, fwP=4.68, fxP=sxP-0.20-fwP
+  const shP=4.00, swP=4.00, sxP=MR-swP
+  const fhP=3.00, fwP=5.50, fxP=sxP-0.20-fwP
   if(selloP) addImgFit(doc,selloP,'s_'+sKeyP,sxP,1.80,swP,shP)
   else if(firmaP) addImgFit(doc,firmaP,'f_'+sKeyP,fxP,1.80,fwP,fhP)
   // Diag. Prequirurgico
