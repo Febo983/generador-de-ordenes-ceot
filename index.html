@@ -874,6 +874,84 @@ function genPreq(i){
   }catch(e){toast('Error: '+(e.message||e));console.error(e)}
 }
 
+// ── Detección de CX nuevas ───────────────────────────────────────
+const CX_VISTAS_KEY = 'ceot-cx-vistas'
+
+function getCxVistas() {
+  try { return new Set(JSON.parse(localStorage.getItem(CX_VISTAS_KEY)||'[]')) } catch(e){ return new Set() }
+}
+function saveCxVistas(set) {
+  localStorage.setItem(CX_VISTAS_KEY, JSON.stringify([...set]))
+}
+
+function detectarNuevas(rows) {
+  const vistas = getCxVistas()
+  const nuevas = []
+  rows.slice(1).forEach(row => {
+    if(!row.some(c=>c)) return
+    let ix
+    if(row[1]?.trim()) ix={n:1,doc:9,fc:10}
+    else if(row[17]?.trim()) ix={n:17,doc:25,fc:24}
+    else return
+    const g=i=>(row[i]||'').trim()
+    const nombre=g(ix.n); if(!nombre) return
+    const key = nombre+'||'+g(ix.doc)+'||'+g(ix.fc)
+    if(!vistas.has(key)) nuevas.push({nombre, doctor:g(ix.doc), fecha:g(ix.fc), key})
+  })
+  // Marcar todas como vistas
+  const todasKeys = rows.slice(1).map(row => {
+    let ix
+    if(row[1]?.trim()) ix={n:1,doc:9,fc:10}
+    else if(row[17]?.trim()) ix={n:17,doc:25,fc:24}
+    else return null
+    const g=i=>(row[i]||'').trim()
+    const nombre=g(ix.n); if(!nombre) return null
+    return nombre+'||'+g(ix.doc)+'||'+g(ix.fc)
+  }).filter(Boolean)
+  saveCxVistas(new Set(todasKeys))
+  return nuevas
+}
+
+function mostrarNotifNuevas(nuevas) {
+  const existing = document.getElementById('notif-nuevas')
+  if(existing) existing.remove()
+  if(!nuevas.length) return
+  const div = document.createElement('div')
+  div.id = 'notif-nuevas'
+  div.style.cssText = 'margin:0 16px 12px;background:rgba(34,197,94,.1);border:.5px solid rgba(34,197,94,.3);border-radius:14px;overflow:hidden'
+  const titulo = nuevas.length === 1
+    ? `🆕 Nueva cirugía programada`
+    : `🆕 ${nuevas.length} cirugías nuevas`
+  div.innerHTML = `
+    <div style="padding:12px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="this.nextElementSibling.classList.toggle('open');this.querySelector('.nico').classList.toggle('open')">
+      <div>
+        <div style="font-size:12px;font-weight:700;color:#4ade80;letter-spacing:.3px">${titulo}</div>
+        <div style="font-size:11px;color:rgba(74,222,128,.6);margin-top:2px">Tap para ver el detalle</div>
+      </div>
+      <span class="nico" style="color:#4ade80;font-size:13px;transition:transform .2s">▼</span>
+    </div>
+    <div style="display:none;padding:2px 14px 12px" class="notif-body">
+      ${nuevas.map(x=>`
+        <div style="padding:8px 0;border-bottom:.5px solid rgba(255,255,255,.06)">
+          <div style="font-size:13px;font-weight:600;color:#4ade80">${x.nombre}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px;display:flex;gap:10px;flex-wrap:wrap">
+            <span>👨‍⚕️ ${x.doctor||'—'}</span>
+            ${x.fecha?`<span>🔪 CX: ${x.fecha}</span>`:''}
+          </div>
+        </div>`).join('')}
+    </div>`
+  div.querySelector('.nico').style.cssText += ';display:inline-block'
+  // Insertar antes del panel de pendientes
+  const ref = document.getElementById('alerta30wrap')
+  ref.parentNode.insertBefore(div, ref)
+  // Auto-abrir si hay pocas
+  if(nuevas.length <= 3) {
+    div.querySelector('.notif-body').classList.add('open')
+    div.querySelector('.notif-body').style.display = 'block'
+    div.querySelector('.nico').style.transform = 'rotate(180deg)'
+  }
+}
+
 async function buscar(){
   const fecha=document.getElementById('iDate').value
   const nombre=document.getElementById('iNombre').value.trim()
@@ -890,6 +968,8 @@ async function buscar(){
     setEstado('')
     render(pac)
     renderPendientes(filtrarPendientes(rows))
+    const nuevas = detectarNuevas(rows)
+    mostrarNotifNuevas(nuevas)
   }catch(e){setEstado('Error al descargar la planilla.');console.error(e)}
   btn.disabled=false
 }
