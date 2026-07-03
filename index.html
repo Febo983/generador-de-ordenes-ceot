@@ -886,7 +886,10 @@ function saveCxVistas(set) {
 
 function detectarNuevas(rows) {
   const vistas = getCxVistas()
+  const esPrimeraVez = vistas.size === 0
   const nuevas = []
+  const todasKeys = new Set()
+
   rows.slice(1).forEach(row => {
     if(!row.some(c=>c)) return
     let ix
@@ -896,19 +899,12 @@ function detectarNuevas(rows) {
     const g=i=>(row[i]||'').trim()
     const nombre=g(ix.n); if(!nombre) return
     const key = nombre+'||'+g(ix.doc)+'||'+g(ix.fc)
-    if(!vistas.has(key)) nuevas.push({nombre, doctor:g(ix.doc), fecha:g(ix.fc), key})
+    todasKeys.add(key)
+    if(!esPrimeraVez && !vistas.has(key))
+      nuevas.push({nombre, doctor:g(ix.doc), fecha:g(ix.fc), key})
   })
-  // Marcar todas como vistas
-  const todasKeys = rows.slice(1).map(row => {
-    let ix
-    if(row[1]?.trim()) ix={n:1,doc:9,fc:10}
-    else if(row[17]?.trim()) ix={n:17,doc:25,fc:24}
-    else return null
-    const g=i=>(row[i]||'').trim()
-    const nombre=g(ix.n); if(!nombre) return null
-    return nombre+'||'+g(ix.doc)+'||'+g(ix.fc)
-  }).filter(Boolean)
-  saveCxVistas(new Set(todasKeys))
+
+  saveCxVistas(todasKeys)
   return nuevas
 }
 
