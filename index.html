@@ -494,7 +494,7 @@ function drawPage(doc, p, lineas, conFechaCirugia) {
 
   doc.setFont('helvetica','normal'); doc.setFontSize(8)
   let yc=6.87
-  const _tx=LBL+0.35, _mw=MR-_tx
+  const _tx=LBL+0.35, _mw=MR-_tx-0.35
   for(const ln of lineas){
     if(ln&&String(ln).trim()){
       const wls=doc.splitTextToSize(String(ln).trim(),_mw)
@@ -503,9 +503,10 @@ function drawPage(doc, p, lineas, conFechaCirugia) {
   }
 
   doc.setFont('helvetica','normal'); doc.setFontSize(7)
-  const dgLines=doc.splitTextToSize('Dg: '+(p.diagnostico||''),MR-LBL)
-  dgLines.slice(0,3).forEach((l,i)=>doc.text(l,LBL,18.90+i*0.38))
-  let ye=19.28
+  const dgY=Math.max(18.90,yc+0.30)
+  const dgLines=doc.splitTextToSize('Dg: '+(p.diagnostico||''),MR-LBL-0.35)
+  dgLines.slice(0,5).forEach((l,i)=>doc.text(l,LBL,dgY+i*0.38))
+  let ye=Math.max(19.28,dgY+dgLines.slice(0,5).length*0.38)
   if(conFechaCirugia&&p.fecha_cirugia){doc.text('Fecha de cirugia: '+p.fecha_cirugia,LBL,ye);ye+=0.38}
   doc.text('Fecha: '+fecha,LBL,ye)
 
