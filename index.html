@@ -378,7 +378,7 @@ function filtrar(rows, fechaISO, nombreFiltro) {
   return rows.slice(1).reduce((acc,row)=>{
     if(!row.some(c=>c)) return acc
     let ix
-    if(row[1]?.trim()) ix={n:1,e:2,nu:3,d:4,m:5,co:6,nun:7,doc:9,fc:10,cel:11,ti:15,el:16,pq:14}
+    if(row[1]?.trim()) ix={n:1,e:2,nu:3,d:4,m:5,co:6,nun:7,dni:8,doc:9,fc:10,cel:11,ed:12,ti:15,el:16,pq:14,hq:17,di:18}
     else if(row[17]?.trim()) ix={n:17,e:18,nu:19,d:20,m:21,co:22,nun:23,doc:25,fc:24,cel:27,ti:30,el:32,pq:14}
     else return acc
     const g=i=>(row[i]||'').trim()
@@ -390,15 +390,21 @@ function filtrar(rows, fechaISO, nombreFiltro) {
     if(nf&&!normStr(nombre).includes(nf)) return acc
     const fechaEmision=modo==='cirugia'?hoyStr:((row[0]||'').split(' ')[0]||hoyStr)
     acc.push({nombre,entidad:g(ix.e),num:g(ix.nu),diagnostico:g(ix.d),
-      material:g(ix.m),codi:g(ix.co),nun:g(ix.nun),doctor:g(ix.doc),
-      fecha_cirugia:g(ix.fc),celular:g(ix.cel),tipo:g(ix.ti),
-      elementos:g(ix.el),necesita_preq:g(ix.pq),fecha_emision:fechaEmision})
+      material:g(ix.m),codi:g(ix.co),nun:g(ix.nun),dni:g(ix.dni),doctor:g(ix.doc),
+      fecha_cirugia:g(ix.fc),celular:g(ix.cel),edad:g(ix.ed),tipo:g(ix.ti),
+      elementos:g(ix.el),necesita_preq:g(ix.pq),horasQx:g(ix.hq),diasIntern:g(ix.di),
+      fecha_emision:fechaEmision})
     return acc
   },[])
 }
 
 const SK=['mazzola','guilera','deganutti','garmendia','bruni','bruna',
   'trivellini','perlasco','corelich','fisser','delacolina','labayen','leon','soule']
+
+const ENTIDADES_PRESU=['particular','ioma','pami']
+function esPresupuesto(entidad){
+  return ENTIDADES_PRESU.includes(normStr(entidad).trim())
+}
 
 function normalizar(nombre) {
   const n=(nombre||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
@@ -605,15 +611,16 @@ function buildOrdenes(p) {
   const esInter=(p.tipo||'').toUpperCase().includes('INTERNACION')
   const matLineas=esVacio(p.material)?[]:[p.material]
   const tieneFer=!esVacio(p.elementos)
-  const ords=[
+  const candidatos=[
     esInter
-      ?{ln:['Derechos Sanatoriales e internacion por:',p.codi],cx:true}
-      :{ln:['Derechos Sanatoriales por:',p.codi],cx:false},
-    ...(esInter?[{ln:['Honorarios Anestesia por:',p.codi],cx:false}]:[]),
-    {ln:['Honorarios Cirujano:',p.nun],cx:false},
-    {ln:['Honorarios Ayudante:',p.nun],cx:false},
-    {ln:matLineas,cx:false},
+      ?{ln:['Derechos Sanatoriales e internacion por:',p.codi],cx:true,val:p.codi}
+      :{ln:['Derechos Sanatoriales por:',p.codi],cx:false,val:p.codi},
+    esInter?{ln:['Honorarios Anestesia por:',p.codi],cx:false,val:p.codi}:null,
+    {ln:['Honorarios Cirujano:',p.nun],cx:false,val:p.nun},
+    {ln:['Honorarios Ayudante:',p.nun],cx:false,val:p.nun},
+    matLineas.length?{ln:matLineas,cx:false,val:p.material}:null,
   ]
+  const ords=candidatos.filter(o=>o && !esVacio(o.val))
   if(tieneFer) ords.push({ln:[p.elementos],cx:false,diag:'Post-operatorio'})
   return ords
 }
@@ -640,6 +647,216 @@ function generarBlobPreq(p,cardio,clinica) {
   if(cardio) estudios.push(['Evaluación cardiológica prequirúrgica'])
   if(clinica) estudios.push(['Evaluación clínica / Apto quirúrgico'])
   estudios.forEach((ln,i)=>{if(i>0) doc.addPage();drawPagePreq(doc,p,ln)})
+  return doc.output('blob')
+}
+
+function generarBlobPresupuesto(p) {
+  if(typeof jsPDF!=='function') throw new Error('jsPDF no cargó. Verificá tu conexión y recargá la página.')
+  const doc=new jsPDF({unit:'cm',format:'a4',orientation:'portrait'})
+  const ML=1.4, MR=19.6, CXp=(ML+MR)/2, BOTTOM=28.2
+  let y=1.5
+
+  const esInter=(p.tipo||'').toUpperCase().includes('INTERNACION')
+  const dNom=(p.doctor||'').trim()
+  const doctorLbl=dNom?(/^dr/i.test(dNom)?dNom:'Dr. '+dNom):'—'
+  const fecha=new Date().toLocaleDateString('es-AR')
+  const cirParts=[p.diagnostico,p.codi].map(v=>(v||'').trim()).filter(v=>v&&!esVacio(v))
+  const cirugia=cirParts.join('  –  ')
+
+  function chk(x,cy,on){
+    doc.setDrawColor(0); doc.setLineWidth(0.02); doc.rect(x,cy-0.30,0.34,0.34)
+    if(on){ doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.text('X',x+0.09,cy-0.05); doc.setFont('helvetica','normal') }
+  }
+  function opt(x,cy,txt,on,size){
+    doc.setFont('helvetica','normal'); doc.setFontSize(size||7.5); doc.setTextColor(0)
+    doc.text(txt,x,cy)
+    const w=doc.getTextWidth(txt)
+    chk(x+w+0.15,cy,on)
+    return x+w+0.15+0.34
+  }
+  function campo(cy,label,valor,vx){
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(0)
+    doc.text(label,ML,cy)
+    const tx=vx||(ML+doc.getTextWidth(label)+0.25)
+    doc.setFontSize(9)
+    doc.text(String(valor||''),tx,cy)
+    doc.setDrawColor(190); doc.setLineWidth(0.01)
+    doc.line(tx,cy+0.10,MR,cy+0.10)
+  }
+  function seccionLbl(cy,txt){
+    doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(60)
+    doc.text(txt,ML,cy)
+  }
+  function imgFit(src,dimKey,bx,by,bw,bh){
+    if(!src) return
+    const fmt=src.startsWith('data:image/png')?'PNG':'JPEG'
+    const d=DIMS[dimKey]
+    let rw=bw, rh=bh
+    if(d){ const ratio=d.w/d.h; rh=bw/ratio; if(rh>bh){ rh=bh; rw=bh*ratio } }
+    const xi=bx+(bw-rw)/2, yi=by+(bh-rh)/2
+    try{ doc.addImage(src,fmt,xi,yi,rw,rh,undefined,'FAST') }catch(e){}
+  }
+
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(120)
+  doc.text('GPI-FOR-001',MR,0.9,{align:'right'})
+  doc.setTextColor(0)
+  doc.setFont('helvetica','bold'); doc.setFontSize(14)
+  doc.text('INFORME MÉDICO',CXp,y,{align:'center'}); y+=0.55
+  doc.setFontSize(11)
+  doc.text('SOLICITUD DE PRESUPUESTO',CXp,y,{align:'center'}); y+=0.30
+  y+=0.15
+  doc.setDrawColor(0); doc.setLineWidth(0.03)
+  doc.line(ML,y,MR,y); y+=0.55
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(9)
+  doc.text('DATOS DEL PACIENTE',ML,y)
+  doc.setFont('helvetica','normal')
+  doc.text('FECHA DE SOLICITUD:',11.9,y)
+  doc.setFont('helvetica','bold')
+  doc.text(fecha,MR,y,{align:'right'})
+  y+=0.55
+
+  campo(y,'NOMBRE Y APELLIDO:',p.nombre); y+=0.68
+  campo(y,'DNI:',p.dni); y+=0.68
+  campo(y,'DATOS DE CONTACTO:',p.celular); y+=0.68
+
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(0)
+  doc.text('EDAD:',ML,y); doc.setFontSize(9); doc.text(String(p.edad||''),ML+1.05,y)
+  doc.setDrawColor(190); doc.line(ML+1.05,y+0.10,ML+2.5,y+0.10)
+  doc.setFontSize(8); doc.text('OO.SS.:',ML+2.9,y); doc.setFontSize(9); doc.text(p.entidad||'',ML+4.15,y)
+  doc.setDrawColor(190); doc.line(ML+4.15,y+0.10,ML+8.5,y+0.10)
+  doc.setFontSize(8); doc.text('Nº AFILIADO:',ML+8.9,y); doc.setFontSize(9); doc.text(p.num||'',ML+11.3,y)
+  doc.setDrawColor(190); doc.line(ML+11.3,y+0.10,MR,y+0.10)
+  y+=0.68
+
+  campo(y,'PROFESIONAL:',doctorLbl); y+=0.68
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(0)
+  doc.text('DIAGNÓSTICO:',ML,y)
+  doc.setFont('helvetica','normal'); doc.setFontSize(9)
+  const dgLines=doc.splitTextToSize(String(p.diagnostico||''),MR-ML-3.2)
+  dgLines.forEach((l,i)=>doc.text(l,ML+3.2,y+i*0.38))
+  y+=Math.max(0.68,dgLines.length*0.38+0.2)
+
+  y+=0.15; doc.setDrawColor(150); doc.setLineWidth(0.02); doc.line(ML,y,MR,y); y+=0.62
+
+  seccionLbl(y,'Complejidad de la patología y/o tratamiento:')
+  let ox=ML+7.1
+  ox=opt(ox,y,'ALTA',false); ox=opt(ox+0.3,y,'MEDIA',false); opt(ox+0.3,y,'BAJA',false)
+  y+=0.62
+
+  seccionLbl(y,'Complejidad según estado general del paciente:')
+  ox=ML+7.6
+  ox=opt(ox,y,'ALTA',false); ox=opt(ox+0.3,y,'MEDIA',false); opt(ox+0.3,y,'BAJA',false)
+  y+=0.62
+
+  seccionLbl(y,'Comorbilidades:')
+  ox=ML+3.0
+  ox=opt(ox,y,'HIPERTENSIÓN',false); ox=opt(ox+0.35,y,'EPOC',false); opt(ox+0.35,y,'DIABETES',false)
+  y+=0.5
+  ox=ML+3.0
+  ox=opt(ox,y,'OBESIDAD',false); ox=opt(ox+0.35,y,'INMUNOSUPRESORES',false); opt(ox+0.35,y,'MEDICACIÓN',false)
+  y+=0.62
+
+  campo(y,'Otros:',''); y+=0.68
+
+  seccionLbl(y,'Requiere Internación:')
+  ox=ML+4.0
+  ox=opt(ox,y,'SI',esInter,8); opt(ox+0.5,y,'NO',!esInter,8)
+  y+=0.62
+
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(0)
+  doc.text('Cantidad de días en:',ML,y)
+  doc.text('PISO:',ML+3.3,y); doc.setFontSize(9); doc.text(String(p.diasIntern||''),ML+4.15,y)
+  doc.setDrawColor(190); doc.line(ML+4.15,y+0.10,ML+8.0,y+0.10)
+  doc.setFontSize(8); doc.text('UTI / UCO / NEO / UIP:',ML+8.4,y)
+  doc.setDrawColor(190); doc.line(ML+12.3,y+0.10,MR,y+0.10)
+  y+=0.68
+
+  campo(y,'Necesidad de Transfusión – Cantidad de Unidades:',''); y+=0.68
+
+  seccionLbl(y,'Internación:')
+  ox=ML+2.6
+  ox=opt(ox,y,'URGENCIA',false); opt(ox+0.35,y,'PROGRAMADA',false)
+  y+=0.62
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(0)
+  doc.text('Estudios pre-quirúrgicos a presupuestar:',ML,y)
+  y+=0.4
+  ox=ML+0.2
+  ox=opt(ox,y,'EVALUACIÓN CARDIOLÓGICA',false); ox=opt(ox+0.35,y,'ECG',false)
+  ox=opt(ox+0.35,y,'LABORATORIO',false); opt(ox+0.35,y,'IMÁGENES',false)
+  y+=0.62
+
+  campo(y,'Otros Estudios:',''); y+=0.68
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(0)
+  doc.text('Cirugía / Tratamiento a realizar:',ML,y)
+  doc.setFont('helvetica','normal'); doc.setFontSize(9)
+  const cxLines=doc.splitTextToSize(cirugia,MR-ML-5.3)
+  cxLines.forEach((l,i)=>doc.text(l,ML+5.3,y+i*0.38))
+  y+=Math.max(0.68,cxLines.length*0.38+0.2)
+
+  seccionLbl(y,'Requiere Derivación a NEO:')
+  ox=ML+4.7
+  ox=opt(ox,y,'SI',false,8); opt(ox+0.5,y,'NO',false,8)
+  y+=0.62
+
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(0)
+  doc.text('Cantidad de horas de utilización de quirófano:',ML,y)
+  doc.setFontSize(9)
+  doc.text(String(p.horasQx||''),ML+7.7,y)
+  doc.setDrawColor(190); doc.line(ML+7.7,y+0.10,MR,y+0.10)
+  y+=0.72
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(0)
+  doc.text('Presupuestar:',ML,y)
+  doc.setFont('helvetica','normal')
+  doc.text('HONORARIOS: $',ML+2.6,y)
+  doc.setDrawColor(190); doc.line(ML+5.3,y+0.10,MR,y+0.10)
+  y+=0.54
+  doc.text('HONORARIOS A. Y 1/2: $',ML+2.6,y)
+  doc.line(ML+6.0,y+0.10,MR,y+0.10)
+  y+=0.54
+  doc.text('GASTOS EQUIPO: $',ML+2.6,y)
+  doc.line(ML+5.5,y+0.10,MR,y+0.10)
+  y+=0.68
+
+  doc.setFont('helvetica','normal'); doc.setFontSize(8)
+  doc.text('Descripción de material específico:',ML,y)
+  doc.setFontSize(9)
+  const matVal=(p.material&&!esVacio(p.material))?p.material:''
+  doc.text(matVal,ML+5.6,y)
+  doc.setDrawColor(190); doc.line(ML+5.6,y+0.10,15.8,y+0.10)
+  doc.setFontSize(8); doc.text('$',16.0,y)
+  doc.line(16.3,y+0.10,MR,y+0.10)
+  y+=0.54
+  doc.text('Descripción de material específico:',ML,y)
+  doc.line(ML+5.6,y+0.10,15.8,y+0.10)
+  doc.text('$',16.0,y); doc.line(16.3,y+0.10,MR,y+0.10)
+  y+=0.68
+
+  doc.setFont('helvetica','normal'); doc.setFontSize(8)
+  doc.text('Observaciones:',ML,y)
+  doc.setDrawColor(190)
+  doc.line(ML,y+0.38,MR,y+0.38)
+  doc.line(ML,y+0.80,MR,y+0.80)
+  y+=1.1
+
+  if(y>BOTTOM-4.2){ doc.addPage(); y=1.6 }
+  const sigY=Math.max(y+0.5, BOTTOM-4.2)
+  doc.setDrawColor(150); doc.setLineWidth(0.02)
+  doc.line(ML,sigY,MR,sigY)
+  const sKey=normalizar(p.doctor)
+  const sello=getSello(p.doctor), firma=getFirma(p.doctor)
+  const sigW=6.0, sigX=MR-sigW
+  if(sello) imgFit(sello,'s_'+sKey,sigX+1.8,sigY+0.2,4.2,3.0)
+  else if(firma) imgFit(firma,'f_'+sKey,sigX+1.0,sigY+0.2,5.0,2.2)
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(0)
+  doc.text(doctorLbl,MR,sigY+3.4,{align:'right'})
+  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(90)
+  doc.text('Firma y sello del médico solicitante',MR,sigY+3.75,{align:'right'})
+
   return doc.output('blob')
 }
 
@@ -752,7 +969,8 @@ function render(pacientes){
   lista.innerHTML=''
   pacientes.forEach((p,i)=>{
     const esInter=(p.tipo||'').toUpperCase().includes('INTERNACION')
-    const nOrd=buildOrdenes(p).length
+    const esPresu=esPresupuesto(p.entidad)
+    const nOrd=esPresu?0:buildOrdenes(p).length
     const haPreq=p.necesita_preq?.toUpperCase()==='SI'
     const div=document.createElement('div'); div.className='pcard'
     div.innerHTML=`
@@ -763,11 +981,11 @@ function render(pacientes){
       <div class="pi">
         <span class="pt">👨‍⚕️ ${p.doctor||'—'}</span>
         <span class="pt">🏥 ${p.entidad||'—'}</span>
-        <span class="pt">📋 ${nOrd} órdenes</span>
+        ${esPresu?'<span class="pt" style="color:#38bdf8">💰 Presupuesto</span>':`<span class="pt">📋 ${nOrd} órdenes</span>`}
         ${haPreq?'<span class="pt" style="color:#fbbf24">⚠️ Preq. pendiente</span>':''}
       </div>
       <div class="pa">
-        <button class="bpdf" id="bp${i}" onclick="genPDF(${i})">⬇ PDF</button>
+        <button class="bpdf" id="bp${i}" onclick="${esPresu?`genPresu(${i})`:`genPDF(${i})`}">${esPresu?'📄 Presupuesto':'⬇ PDF'}</button>
         <button class="bwa" id="bw${i}" onclick="genWA(${i})">📲 Enviar CX</button>
         <button class="bpreq" onclick="togglePreq(${i})">Preq.</button>
         <button class="btramite" id="bt${i}" onclick="toggleTramite(${i})">☐ Finalizado</button>
@@ -847,23 +1065,39 @@ function genPDF(i){
   },30)
 }
 
+function genPresu(i){
+  btnBusy('bp'+i,'…')
+  setTimeout(()=>{
+    try{
+      const p=window._pac[i]
+      descargar(generarBlobPresupuesto(p),'Presupuesto_'+nombreSafe(p.nombre)+'.pdf')
+      toast('Presupuesto descargado ✓')
+    }catch(e){toast('Error: '+(e.message||e));console.error(e)}
+    btnReset('bp'+i,'📄 Presupuesto')
+  },30)
+}
+
 function genWA(i){
   btnBusy('bw'+i,'…')
   setTimeout(async()=>{
     try{
       const p=window._pac[i]
-      const blob=generarBlob(p)
+      const esPresu=esPresupuesto(p.entidad)
+      const blob=esPresu?generarBlobPresupuesto(p):generarBlob(p)
       let cel=(p.celular||'').replace(/\D/g,'')
       if(cel.length===10) cel='549'+cel
       else if(cel.length===8) cel='5492235'+cel
       const nombre1=p.nombre.split(' ')[0]
       const fecha=p.fecha_cirugia||p.fecha_emision||''
-      const msg=encodeURIComponent('Hola '+nombre1+'! Le avisamos que sus ordenes para la cirugia del '+fecha+' estan listas. Dr. '+p.doctor+' - CEOT Clinica Colon.')
+      const msg=esPresu
+        ?encodeURIComponent('Hola '+nombre1+'! Le avisamos que su solicitud de presupuesto para la cirugia del '+fecha+' esta lista. Dr. '+p.doctor+' - CEOT Clinica Colon.')
+        :encodeURIComponent('Hola '+nombre1+'! Le avisamos que sus ordenes para la cirugia del '+fecha+' estan listas. Dr. '+p.doctor+' - CEOT Clinica Colon.')
+      const nomArchivo=(esPresu?'Presupuesto_':'')+nombreSafe(p.nombre)+'.pdf'
       if(cel.length>=11){
-        descargar(blob,nombreSafe(p.nombre)+'.pdf')
+        descargar(blob,nomArchivo)
         setTimeout(()=>window.open('https://wa.me/'+cel+'?text='+msg,'_blank'),700)
       } else {
-        await compartirWA(blob,nombreSafe(p.nombre)+'.pdf',p.nombre)
+        await compartirWA(blob,nomArchivo,p.nombre)
       }
       toast('Listo ✓')
     }catch(e){toast('Error: '+(e.message||e));console.error(e)}
