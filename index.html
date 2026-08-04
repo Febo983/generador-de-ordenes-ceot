@@ -93,6 +93,20 @@ input[type=text]::placeholder{color:var(--m)}
   font-family:inherit;margin-top:4px}
 .bpreq-g:active{opacity:.8}
 
+.presu-p{background:rgba(56,189,248,.06);border:.5px solid rgba(56,189,248,.2);
+  border-radius:10px;padding:12px;display:none;flex-direction:column;gap:10px}
+.presu-p.open{display:flex}
+.presu-grp-tit{font-size:11px;font-weight:600;color:#38bdf8;margin-bottom:4px}
+.presu-opts{display:flex;gap:12px;flex-wrap:wrap}
+.presu-opts label{display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer}
+.presu-opts input{width:15px;height:15px;accent-color:#38bdf8;cursor:pointer}
+.presu-actions{display:flex;gap:8px;margin-top:2px}
+.presu-actions button{flex:1;border:none;border-radius:8px;padding:9px;font-size:12px;
+  font-weight:700;cursor:pointer;font-family:inherit}
+.bpresu-ver{background:rgba(56,189,248,.15);color:#38bdf8}
+.bpresu-dl{background:#38bdf8;color:#062634}
+.bpresu-wa{background:rgba(232,160,32,.13);color:var(--go)}
+
 .no-r{text-align:center;color:var(--m);font-size:14px;padding:24px 16px}
 .spacer{height:32px}
 
@@ -650,13 +664,16 @@ function generarBlobPreq(p,cardio,clinica) {
   return doc.output('blob')
 }
 
-function generarBlobPresupuesto(p) {
+function generarBlobPresupuesto(p, ov) {
   if(typeof jsPDF!=='function') throw new Error('jsPDF no cargó. Verificá tu conexión y recargá la página.')
+  ov=ov||{}
   const doc=new jsPDF({unit:'cm',format:'a4',orientation:'portrait'})
   const ML=1.4, MR=19.6, CXp=(ML+MR)/2, BOTTOM=28.2
   let y=1.5
 
-  const esInter=(p.tipo||'').toUpperCase().includes('INTERNACION')
+  const esInter=ov.reqInternacion?ov.reqInternacion==='SI':(p.tipo||'').toUpperCase().includes('INTERNACION')
+  const comorb=ov.comorb||new Set()
+  const estudios=ov.estudios||new Set()
   const dNom=(p.doctor||'').trim()
   const doctorLbl=dNom?(/^dr/i.test(dNom)?dNom:'Dr. '+dNom):'—'
   const fecha=new Date().toLocaleDateString('es-AR')
@@ -742,20 +759,20 @@ function generarBlobPresupuesto(p) {
 
   seccionLbl(y,'Complejidad de la patología y/o tratamiento:')
   let ox=ML+7.1
-  ox=opt(ox,y,'ALTA',false); ox=opt(ox+0.3,y,'MEDIA',false); opt(ox+0.3,y,'BAJA',false)
+  ox=opt(ox,y,'ALTA',ov.complejPat==='ALTA'); ox=opt(ox+0.3,y,'MEDIA',ov.complejPat==='MEDIA'); opt(ox+0.3,y,'BAJA',ov.complejPat==='BAJA')
   y+=0.62
 
   seccionLbl(y,'Complejidad según estado general del paciente:')
   ox=ML+7.6
-  ox=opt(ox,y,'ALTA',false); ox=opt(ox+0.3,y,'MEDIA',false); opt(ox+0.3,y,'BAJA',false)
+  ox=opt(ox,y,'ALTA',ov.complejEst==='ALTA'); ox=opt(ox+0.3,y,'MEDIA',ov.complejEst==='MEDIA'); opt(ox+0.3,y,'BAJA',ov.complejEst==='BAJA')
   y+=0.62
 
   seccionLbl(y,'Comorbilidades:')
   ox=ML+3.0
-  ox=opt(ox,y,'HIPERTENSIÓN',false); ox=opt(ox+0.35,y,'EPOC',false); opt(ox+0.35,y,'DIABETES',false)
+  ox=opt(ox,y,'HIPERTENSIÓN',comorb.has('HTA')); ox=opt(ox+0.35,y,'EPOC',comorb.has('EPOC')); opt(ox+0.35,y,'DIABETES',comorb.has('DBT'))
   y+=0.5
   ox=ML+3.0
-  ox=opt(ox,y,'OBESIDAD',false); ox=opt(ox+0.35,y,'INMUNOSUPRESORES',false); opt(ox+0.35,y,'MEDICACIÓN',false)
+  ox=opt(ox,y,'OBESIDAD',comorb.has('OBE')); ox=opt(ox+0.35,y,'INMUNOSUPRESORES',comorb.has('INM')); opt(ox+0.35,y,'MEDICACIÓN',comorb.has('MED'))
   y+=0.62
 
   campo(y,'Otros:',''); y+=0.68
@@ -777,15 +794,15 @@ function generarBlobPresupuesto(p) {
 
   seccionLbl(y,'Internación:')
   ox=ML+2.6
-  ox=opt(ox,y,'URGENCIA',false); opt(ox+0.35,y,'PROGRAMADA',false)
+  ox=opt(ox,y,'URGENCIA',ov.internacionTipo==='URGENCIA'); opt(ox+0.35,y,'PROGRAMADA',ov.internacionTipo==='PROGRAMADA')
   y+=0.62
 
   doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(0)
   doc.text('Estudios pre-quirúrgicos a presupuestar:',ML,y)
   y+=0.4
   ox=ML+0.2
-  ox=opt(ox,y,'EVALUACIÓN CARDIOLÓGICA',false); ox=opt(ox+0.35,y,'ECG',false)
-  ox=opt(ox+0.35,y,'LABORATORIO',false); opt(ox+0.35,y,'IMÁGENES',false)
+  ox=opt(ox,y,'EVALUACIÓN CARDIOLÓGICA',estudios.has('CARDIO')); ox=opt(ox+0.35,y,'ECG',estudios.has('ECG'))
+  ox=opt(ox+0.35,y,'LABORATORIO',estudios.has('LAB')); opt(ox+0.35,y,'IMÁGENES',estudios.has('IMG'))
   y+=0.62
 
   campo(y,'Otros Estudios:',''); y+=0.68
@@ -799,7 +816,7 @@ function generarBlobPresupuesto(p) {
 
   seccionLbl(y,'Requiere Derivación a NEO:')
   ox=ML+4.7
-  ox=opt(ox,y,'SI',false,8); opt(ox+0.5,y,'NO',false,8)
+  ox=opt(ox,y,'SI',ov.derivNeo==='SI',8); opt(ox+0.5,y,'NO',ov.derivNeo==='NO',8)
   y+=0.62
 
   doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(0)
@@ -985,8 +1002,8 @@ function render(pacientes){
         ${haPreq?'<span class="pt" style="color:#fbbf24">⚠️ Preq. pendiente</span>':''}
       </div>
       <div class="pa">
-        <button class="bpdf" id="bp${i}" onclick="${esPresu?`genPresu(${i})`:`genPDF(${i})`}">${esPresu?'📄 Presupuesto':'⬇ PDF'}</button>
-        <button class="bwa" id="bw${i}" onclick="genWA(${i})">📲 Enviar CX</button>
+        <button class="bpdf" id="bp${i}" onclick="${esPresu?`togglePresu(${i})`:`genPDF(${i})`}">${esPresu?'📝 Presupuesto':'⬇ PDF'}</button>
+        ${esPresu?'':`<button class="bwa" id="bw${i}" onclick="genWA(${i})">📲 Enviar CX</button>`}
         <button class="bpreq" onclick="togglePreq(${i})">Preq.</button>
         <button class="btramite" id="bt${i}" onclick="toggleTramite(${i})">☐ Finalizado</button>
       </div>
@@ -996,7 +1013,72 @@ function render(pacientes){
         <div class="preq-opt"><input type="checkbox" id="ca${i}"><label for="ca${i}">Evaluación cardiológica</label></div>
         <div class="preq-opt"><input type="checkbox" id="cl${i}"><label for="cl${i}">Evaluación clínica / Apto quirúrgico</label></div>
         <button class="bpreq-g" onclick="genPreq(${i})">Generar prequirúrgicos</button>
-      </div>`
+      </div>
+      ${esPresu?`
+      <div class="presu-p" id="pu${i}">
+        <div>
+          <div class="presu-grp-tit">Complejidad de la patología y/o tratamiento</div>
+          <div class="presu-opts">
+            <label><input type="radio" name="cp${i}" value="ALTA">ALTA</label>
+            <label><input type="radio" name="cp${i}" value="MEDIA">MEDIA</label>
+            <label><input type="radio" name="cp${i}" value="BAJA">BAJA</label>
+          </div>
+        </div>
+        <div>
+          <div class="presu-grp-tit">Complejidad según estado general del paciente</div>
+          <div class="presu-opts">
+            <label><input type="radio" name="ce${i}" value="ALTA">ALTA</label>
+            <label><input type="radio" name="ce${i}" value="MEDIA">MEDIA</label>
+            <label><input type="radio" name="ce${i}" value="BAJA">BAJA</label>
+          </div>
+        </div>
+        <div>
+          <div class="presu-grp-tit">Comorbilidades</div>
+          <div class="presu-opts">
+            <label><input type="checkbox" id="com${i}_HTA">HIPERTENSIÓN</label>
+            <label><input type="checkbox" id="com${i}_EPOC">EPOC</label>
+            <label><input type="checkbox" id="com${i}_DBT">DIABETES</label>
+            <label><input type="checkbox" id="com${i}_OBE">OBESIDAD</label>
+            <label><input type="checkbox" id="com${i}_INM">INMUNOSUPRESORES</label>
+            <label><input type="checkbox" id="com${i}_MED">MEDICACIÓN</label>
+          </div>
+        </div>
+        <div>
+          <div class="presu-grp-tit">Requiere Internación</div>
+          <div class="presu-opts">
+            <label><input type="radio" name="ri${i}" value="SI"${esInter?' checked':''}>SI</label>
+            <label><input type="radio" name="ri${i}" value="NO"${esInter?'':' checked'}>NO</label>
+          </div>
+        </div>
+        <div>
+          <div class="presu-grp-tit">Internación</div>
+          <div class="presu-opts">
+            <label><input type="radio" name="it${i}" value="URGENCIA">URGENCIA</label>
+            <label><input type="radio" name="it${i}" value="PROGRAMADA">PROGRAMADA</label>
+          </div>
+        </div>
+        <div>
+          <div class="presu-grp-tit">Estudios pre-quirúrgicos a presupuestar</div>
+          <div class="presu-opts">
+            <label><input type="checkbox" id="est${i}_CARDIO">EVALUACIÓN CARDIOLÓGICA</label>
+            <label><input type="checkbox" id="est${i}_ECG">ECG</label>
+            <label><input type="checkbox" id="est${i}_LAB">LABORATORIO</label>
+            <label><input type="checkbox" id="est${i}_IMG">IMÁGENES</label>
+          </div>
+        </div>
+        <div>
+          <div class="presu-grp-tit">Requiere Derivación a NEO</div>
+          <div class="presu-opts">
+            <label><input type="radio" name="neo${i}" value="SI">SI</label>
+            <label><input type="radio" name="neo${i}" value="NO">NO</label>
+          </div>
+        </div>
+        <div class="presu-actions">
+          <button class="bpresu-ver" onclick="verPresu(${i})">👁 Ver</button>
+          <button class="bpresu-dl" id="bpu${i}" onclick="descargarPresu(${i})">⬇ Descargar</button>
+          <button class="bpresu-wa" onclick="enviarPresuWA(${i})">📲 Enviar CX</button>
+        </div>
+      </div>`:''}`
     lista.appendChild(div)
   })
   window._pac=pacientes
@@ -1065,16 +1147,61 @@ function genPDF(i){
   },30)
 }
 
-function genPresu(i){
-  btnBusy('bp'+i,'…')
+function togglePresu(i){document.getElementById('pu'+i).classList.toggle('open')}
+
+function leerOverridesPresu(i){
+  const radio=name=>document.querySelector(`input[name="${name}${i}"]:checked`)?.value||''
+  const chk=id=>!!document.getElementById(id)?.checked
+  const comorb=new Set()
+  ;[['HTA'],['EPOC'],['DBT'],['OBE'],['INM'],['MED']].forEach(([k])=>{if(chk('com'+i+'_'+k)) comorb.add(k)})
+  const estudios=new Set()
+  ;['CARDIO','ECG','LAB','IMG'].forEach(k=>{if(chk('est'+i+'_'+k)) estudios.add(k)})
+  return{
+    complejPat:radio('cp'), complejEst:radio('ce'), comorb,
+    reqInternacion:radio('ri'), internacionTipo:radio('it'),
+    estudios, derivNeo:radio('neo')
+  }
+}
+
+function verPresu(i){
+  try{
+    const p=window._pac[i]
+    const blob=generarBlobPresupuesto(p,leerOverridesPresu(i))
+    const url=URL.createObjectURL(blob)
+    window.open(url,'_blank')
+  }catch(e){toast('Error: '+(e.message||e));console.error(e)}
+}
+
+function descargarPresu(i){
+  btnBusy('bpu'+i,'…')
   setTimeout(()=>{
     try{
       const p=window._pac[i]
-      descargar(generarBlobPresupuesto(p),'Presupuesto_'+nombreSafe(p.nombre)+'.pdf')
+      descargar(generarBlobPresupuesto(p,leerOverridesPresu(i)),'Presupuesto_'+nombreSafe(p.nombre)+'.pdf')
       toast('Presupuesto descargado ✓')
     }catch(e){toast('Error: '+(e.message||e));console.error(e)}
-    btnReset('bp'+i,'📄 Presupuesto')
+    btnReset('bpu'+i,'⬇ Descargar')
   },30)
+}
+
+async function enviarPresuWA(i){
+  try{
+    const p=window._pac[i]
+    const blob=generarBlobPresupuesto(p,leerOverridesPresu(i))
+    let cel=(p.celular||'').replace(/\D/g,'')
+    if(cel.length===10) cel='549'+cel
+    else if(cel.length===8) cel='5492235'+cel
+    const nombre1=p.nombre.split(' ')[0]
+    const msg=encodeURIComponent('Hola '+nombre1+'! Le enviamos su solicitud de presupuesto. Dr. '+p.doctor+' - CEOT Clinica Colon.')
+    const nomArchivo='Presupuesto_'+nombreSafe(p.nombre)+'.pdf'
+    if(cel.length>=11){
+      descargar(blob,nomArchivo)
+      setTimeout(()=>window.open('https://wa.me/'+cel+'?text='+msg,'_blank'),700)
+    } else {
+      await compartirWA(blob,nomArchivo,p.nombre)
+    }
+    toast('Listo ✓')
+  }catch(e){toast('Error: '+(e.message||e));console.error(e)}
 }
 
 function genWA(i){
@@ -1082,17 +1209,14 @@ function genWA(i){
   setTimeout(async()=>{
     try{
       const p=window._pac[i]
-      const esPresu=esPresupuesto(p.entidad)
-      const blob=esPresu?generarBlobPresupuesto(p):generarBlob(p)
+      const blob=generarBlob(p)
       let cel=(p.celular||'').replace(/\D/g,'')
       if(cel.length===10) cel='549'+cel
       else if(cel.length===8) cel='5492235'+cel
       const nombre1=p.nombre.split(' ')[0]
       const fecha=p.fecha_cirugia||p.fecha_emision||''
-      const msg=esPresu
-        ?encodeURIComponent('Hola '+nombre1+'! Le avisamos que su solicitud de presupuesto para la cirugia del '+fecha+' esta lista. Dr. '+p.doctor+' - CEOT Clinica Colon.')
-        :encodeURIComponent('Hola '+nombre1+'! Le avisamos que sus ordenes para la cirugia del '+fecha+' estan listas. Dr. '+p.doctor+' - CEOT Clinica Colon.')
-      const nomArchivo=(esPresu?'Presupuesto_':'')+nombreSafe(p.nombre)+'.pdf'
+      const msg=encodeURIComponent('Hola '+nombre1+'! Le avisamos que sus ordenes para la cirugia del '+fecha+' estan listas. Dr. '+p.doctor+' - CEOT Clinica Colon.')
+      const nomArchivo=nombreSafe(p.nombre)+'.pdf'
       if(cel.length>=11){
         descargar(blob,nomArchivo)
         setTimeout(()=>window.open('https://wa.me/'+cel+'?text='+msg,'_blank'),700)
