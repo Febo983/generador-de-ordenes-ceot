@@ -608,7 +608,7 @@ function buildOrdenes(p) {
   const ords=[
     esInter
       ?{ln:['Derechos Sanatoriales e internacion por:',p.codi],cx:true}
-      :{ln:['Honorarios Medicos por:',p.codi],cx:false},
+      :{ln:['Derechos Sanatoriales por:',p.codi],cx:false},
     ...(esInter?[{ln:['Honorarios Anestesia por:',p.codi],cx:false}]:[]),
     {ln:['Honorarios Cirujano:',p.nun],cx:false},
     {ln:['Honorarios Ayudante:',p.nun],cx:false},
