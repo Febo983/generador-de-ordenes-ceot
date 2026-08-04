@@ -1411,7 +1411,7 @@ function filtrarDocStats(val) {
   const el=document.getElementById('saludo-juli')
   if(!el) return
   const h=new Date().getHours()
-  el.textContent = h < 12 ? '☀️ Buen día Juli!' : '🌤️ Buenas tardes Juli!'
+  el.textContent = h >= 12 && h < 16 ? '🌤️ Buenas tardes Juli!' : '☀️ Buen día Marce!'
 })()
 </script>
 </body>
