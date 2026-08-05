@@ -714,6 +714,12 @@ function generarBlobPresupuesto(p, ov) {
     try{ doc.addImage(src,fmt,xi,yi,rw,rh,undefined,'FAST') }catch(e){}
   }
 
+  const logoSrc=(typeof IMAGENES!=='undefined'&&IMAGENES.logoClinica)||null
+  if(logoSrc){
+    const logoW=4.6, logoH=logoW*610/2570
+    imgFit(logoSrc,'__logoClinica',ML,0.35,logoW,logoH)
+  }
+
   doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(120)
   doc.text('GPI-FOR-001',MR,0.9,{align:'right'})
   doc.setTextColor(0)
@@ -1163,9 +1169,22 @@ function leerOverridesPresu(i){
   }
 }
 
+function faltantesPresu(p){
+  const faltan=[]
+  if(esVacio(p.dni)) faltan.push('DNI')
+  if(esVacio(p.celular)) faltan.push('celular')
+  return faltan
+}
+function confirmarFaltantesPresu(p){
+  const faltan=faltantesPresu(p)
+  if(!faltan.length) return true
+  return confirm('Falta '+faltan.join(' y ')+' de '+p.nombre+'. ¿Generar igual?')
+}
+
 function verPresu(i){
   try{
     const p=window._pac[i]
+    if(!confirmarFaltantesPresu(p)) return
     const blob=generarBlobPresupuesto(p,leerOverridesPresu(i))
     const url=URL.createObjectURL(blob)
     window.open(url,'_blank')
@@ -1173,6 +1192,8 @@ function verPresu(i){
 }
 
 function descargarPresu(i){
+  const p0=window._pac[i]
+  if(!confirmarFaltantesPresu(p0)) return
   btnBusy('bpu'+i,'…')
   setTimeout(()=>{
     try{
@@ -1187,6 +1208,7 @@ function descargarPresu(i){
 async function enviarPresuWA(i){
   try{
     const p=window._pac[i]
+    if(!confirmarFaltantesPresu(p)) return
     const blob=generarBlobPresupuesto(p,leerOverridesPresu(i))
     let cel=(p.celular||'').replace(/\D/g,'')
     if(cel.length===10) cel='549'+cel
