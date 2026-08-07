@@ -538,17 +538,17 @@ function drawPage(doc, p, lineas, conFechaCirugia) {
   }
 
   doc.setFont('helvetica','normal'); doc.setFontSize(7)
-  const dgY=Math.max(18.90,yc+0.30)
+  const dgY=Math.max(19.25,yc+0.30)
   const dgLines=doc.splitTextToSize('Dg: '+(p.diagnostico||''),MR-LBL-0.35)
   dgLines.slice(0,5).forEach((l,i)=>doc.text(l,LBL,dgY+i*0.38))
-  let ye=Math.max(19.28,dgY+dgLines.slice(0,5).length*0.38)
-  if(conFechaCirugia&&p.fecha_cirugia){doc.text('Fecha de cirugia: '+p.fecha_cirugia,LBL,ye);ye+=0.38}
+  let ye=Math.max(19.63,dgY+dgLines.slice(0,5).length*0.38)
+  if(p.fecha_cirugia){doc.text('Fecha de cirugia: '+p.fecha_cirugia,LBL,ye);ye+=0.38}
   doc.text('Fecha: '+fecha,LBL,ye)
 
   const sh=5.50, sw=5.50, sx=MR-sw
   const fh=4.00, fw=6.50, fx=sx-0.20-fw
-  if(sello) addImgFit(doc,sello,'s_'+sKey,sx,1.20,sw,sh)
-  else if(firma) addImgFit(doc,firma,'f_'+sKey,fx,1.20,fw,fh)
+  if(sello) addImgFit(doc,sello,'s_'+sKey,sx,1.55,sw,sh)
+  else if(firma) addImgFit(doc,firma,'f_'+sKey,fx,1.55,fw,fh)
 
   doc.setDrawColor(0); doc.setLineWidth(0.6*PT); doc.line(ML,21.10,MR,21.10)
   doc.setFont('helvetica','bold'); doc.setFontSize(5); doc.setTextColor(0)
