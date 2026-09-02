@@ -240,6 +240,15 @@ input[type=text]::placeholder{color:var(--m)}
 .tbar.curr{background:linear-gradient(180deg,var(--go),rgba(232,160,32,.5))}
 .tbar-v{position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:700;color:var(--m)}
 .tlbl{font-size:9px;color:var(--m);flex-shrink:0}
+.nunb{margin-bottom:11px}
+.nunb:last-child{margin-bottom:0}
+.nunb-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:5px}
+.nunb-c{font-size:12px;font-weight:700;color:var(--go);font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.3px}
+.nunb-n{font-size:10px;color:var(--m);flex-shrink:0}
+.nunb-os{display:flex;flex-wrap:wrap;gap:4px}
+.os-pill{font-size:10px;color:var(--t);background:rgba(255,255,255,.05);border:.5px solid var(--b);border-radius:6px;padding:2px 7px;white-space:nowrap}
+.os-pill b{color:var(--or);font-weight:700;margin-left:4px}
+.os-more{font-size:10px;color:var(--m);padding:2px 3px;align-self:center}
 /* Password */
 .pw-ol{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:500;display:none;align-items:center;justify-content:center}
 .pw-ol.open{display:flex}
@@ -1652,6 +1661,22 @@ function _canonEnt(s) {
   return _ENT_ALIAS[base] || base
 }
 
+// Normaliza el código NUN al núcleo (letras+números), ignorando puntos, espacios y
+// modificadores de facturación: "RO0603" / "Ro.06.03" / "RO0603 + 5% rx" → "RO0603".
+// Combos reales ("RO0703 + RO0505") se mantienen unidos. Texto libre sin código se
+// deja tal cual (mayúsculas). Vacío / "-" / "no" → null.
+function _canonNun(raw) {
+  raw = (raw||'').normalize('NFD').replace(/[̀-ͯ]/g,'').trim()
+  if (!raw || raw === '-' || raw.toLowerCase() === 'no') return null
+  const parts = raw.split('+').map(p => {
+    const m = p.match(/([A-Za-z]{1,4})[\s.]*(\d[\d.\s]*)/)
+    return m ? (m[1] + m[2]).toUpperCase().replace(/[.\s]/g,'') : null
+  }).filter(Boolean)
+  if (parts.length) return parts.join('+')
+  const t = raw.toUpperCase().replace(/\s+/g,' ').trim()
+  return t.length > 3 ? t : null
+}
+
 function _procesarStats(rows, desde, hasta) {
   desde = desde || '2026-05-01'
   hasta = hasta || todayISO()
@@ -1674,13 +1699,17 @@ function _procesarStats(rows, desde, hasta) {
     const doctor = g(ix.doc)
     if (!g(ix.n) || !doctor) return   // sin paciente o sin profesional cargado → no cuenta
     meses.add(mes)
-    const nun    = g(ix.nun) || '—'
+    const nun    = _canonNun(g(ix.nun)) || '—'
     const ent    = _canonEnt(g(ix.e))
     const esInter = g(ix.ti).toUpperCase().includes('INTERNACION')
     const dk = normalizar(doctor) || doctor.toLowerCase()
-    if (!docs[dk]) docs[dk] = {label:doctor, total:0, nuns:{}, ents:{}, meses:{}, inter:0, ambul:0}
+    if (!docs[dk]) docs[dk] = {label:doctor, total:0, nuns:{}, nunEnt:{}, ents:{}, meses:{}, inter:0, ambul:0}
     docs[dk].total++
     docs[dk].nuns[nun] = (docs[dk].nuns[nun]||0)+1
+    if (nun !== '—') {
+      if (!docs[dk].nunEnt[nun]) docs[dk].nunEnt[nun] = {}
+      docs[dk].nunEnt[nun][ent] = (docs[dk].nunEnt[nun][ent]||0)+1
+    }
     docs[dk].ents[ent] = (docs[dk].ents[ent]||0)+1
     docs[dk].meses[mes] = (docs[dk].meses[mes]||0)+1
     esInter ? docs[dk].inter++ : docs[dk].ambul++
@@ -1826,8 +1855,7 @@ function _renderStats({docs, meses}) {
 
   sorted.forEach(d => {
     const topEnts = _top(d.ents, 6).filter(([k])=>k!=='—')
-    const topNunD = _top(d.nuns, 6).filter(([k])=>k!=='—')
-    const maxE = topEnts[0]?.[1]||1, maxN = topNunD[0]?.[1]||1
+    const maxE = topEnts[0]?.[1]||1
     const maxM = Math.max(1,...meses.map(m=>d.meses[m]||0))
     const dk = normalizar(d.label)||d.label.toLowerCase()
     const pctI = d.total ? Math.round(d.inter/d.total*100) : 0
@@ -1864,7 +1892,23 @@ function _renderStats({docs, meses}) {
         <div class="trend">${_trendBars(meses,d.meses,maxM,currMes)}</div>`
     }
     if (topEnts.length) html += `<div class="sdc-sub">Obra social</div><div>${_bars(topEnts,maxE)}</div>`
-    if (topNunD.length) html += `<div class="sdc-sub">NUN</div><div>${_bars(topNunD,maxN)}</div>`
+
+    // Top 3 NUN + con qué obra social se hacen
+    const top3Nun = _top(d.nuns, 3).filter(([k]) => k !== '—')
+    if (top3Nun.length) {
+      html += `<div class="sdc-sub">Top 3 NUN · obra social</div>`
+      top3Nun.forEach(([code, n]) => {
+        const es = Object.entries(d.nunEnt[code] || {}).sort((a,b) => b[1]-a[1])
+        const restN = es.slice(3).reduce((s,x) => s+x[1], 0)
+        html += `<div class="nunb">
+          <div class="nunb-h"><span class="nunb-c">${code}</span><span class="nunb-n">${n} cx</span></div>
+          <div class="nunb-os">
+            ${es.slice(0,3).map(([o,c]) => `<span class="os-pill">${o}<b>${c}</b></span>`).join('')}
+            ${restN ? `<span class="os-more">+${restN} en ${es.length-3} obra${es.length-3>1?'s':''}</span>` : ''}
+          </div>
+        </div>`
+      })
+    }
     html += `</div></div>`
   })
 
