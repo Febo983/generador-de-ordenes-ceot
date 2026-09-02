@@ -1812,7 +1812,7 @@ function filtrarDocStats(val) {
 <style>
 #caritaFeliz{
   position:fixed;left:60px;top:120px;z-index:250;
-  font-size:38px;line-height:1;cursor:pointer;user-select:none;
+  font-size:22px;line-height:1;cursor:pointer;user-select:none;
   filter:drop-shadow(0 2px 4px rgba(0,0,0,.35));
   transition:transform .15s ease;will-change:left,top;
 }
@@ -1850,7 +1850,7 @@ function filtrarDocStats(val) {
   let vx=Math.cos(ang)*SPEED, vy=Math.sin(ang)*SPEED;
   let paused=false, last=performance.now(), hideT;
 
-  const size=()=>cara.offsetWidth||40;
+  const size=()=>cara.offsetWidth||24;
   const bounds=()=>({w:innerWidth-size(), h:innerHeight-size()});
 
   function anclarMsg(){
