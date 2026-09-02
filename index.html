@@ -621,10 +621,20 @@ function drawPagePreq(doc, p, lineas) {
 
 function esVacio(s){return !s||['','-','no'].includes(s.trim().toLowerCase())}
 
+// Grado de gasto quirúrgico del código NUN (columna H): los 2 dígitos que
+// siguen al prefijo de letras. Ej: "MS050301" -> 5. Devuelve null si no matchea.
+function nunGastoQ(nun){
+  const m=String(nun||'').match(/^[A-Za-z]+(\d{2})/)
+  return m?parseInt(m[1],10):null
+}
+
 function buildOrdenes(p) {
   const esInter=(p.tipo||'').toUpperCase().includes('INTERNACION')
   const matLineas=esVacio(p.material)?[]:[p.material]
   const tieneFer=!esVacio(p.elementos)
+  // NUN con gasto quirúrgico 05 o mayor => dos órdenes de ayudantía
+  const gq=nunGastoQ(p.nun)
+  const dosAyudantias=gq!==null&&gq>=5
   const candidatos=[
     esInter
       ?{ln:['Derechos Sanatoriales e internacion por:',p.codi],cx:true,val:p.codi}
@@ -632,6 +642,7 @@ function buildOrdenes(p) {
     esInter?{ln:['Honorarios Anestesia por:',p.codi],cx:false,val:p.codi}:null,
     {ln:['Honorarios Cirujano:',p.nun],cx:false,val:p.nun},
     {ln:['Honorarios Ayudante:',p.nun],cx:false,val:p.nun},
+    dosAyudantias?{ln:['Honorarios 2do Ayudante:',p.nun],cx:false,val:p.nun}:null,
     matLineas.length?{ln:matLineas,cx:false,val:p.material}:null,
   ]
   const ords=candidatos.filter(o=>o && !esVacio(o.val))
