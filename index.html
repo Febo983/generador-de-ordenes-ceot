@@ -182,6 +182,10 @@ input[type=text]::placeholder{color:var(--m)}
 .stats-sec-t{font-size:11px;font-weight:600;color:var(--or);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;opacity:.7}
 .stats-lbl{width:calc(100% - 32px);max-width:640px;margin:0 auto;padding:2px 2px 8px;
   font-size:11px;font-weight:700;color:var(--or);text-transform:uppercase;letter-spacing:.6px;opacity:.65}
+#statsDocFiltro{-webkit-appearance:none;appearance:none;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' fill='none' stroke='%23888' stroke-width='1.6'/></svg>")!important;
+  background-repeat:no-repeat!important;background-position:right 10px center!important;padding-right:28px!important}
+#statsDocFiltro option{background:#1c1c1c;color:#fafafa}
 
 /* resumen — tiles */
 .stiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
@@ -329,7 +333,7 @@ input[type=text]::placeholder{color:var(--m)}
     <div style="display:flex;gap:6px;align-items:center;margin-top:10px">
       <label style="font-size:11px;color:var(--m);flex-shrink:0">Profesional</label>
       <select id="statsDocFiltro" onchange="filtrarDocStats(this.value)"
-        style="flex:1;background:rgba(255,255,255,.05);border:.5px solid var(--b);border-radius:10px;padding:8px 10px;font-size:12px;color:var(--t);outline:none;font-family:inherit">
+        style="flex:1;background:var(--s);border:.5px solid var(--b);border-radius:10px;padding:8px 10px;font-size:12px;color:var(--t);outline:none;font-family:inherit">
         <option value="">Todos</option>
       </select>
     </div>
@@ -1633,14 +1637,19 @@ function _parseFechaStats(s) {
   return `${y}-${b.padStart(2,'0')}-${a.padStart(2,'0')}`
 }
 
+// Obras sociales que son la misma escrita de dos formas → nombre unificado
+const _ENT_ALIAS = {
+  'SANCOR': 'SANCOR SALUD',
+}
 // Normaliza el nombre de la obra social para agrupar variantes que son la misma:
 // "Osde" / "OSDE " / "osde" → "OSDE"; "OSDE 210" / "Osde-410" → "OSDE" (saca el nº de plan)
 function _canonEnt(s) {
   s = (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'')
              .replace(/\s+/g,' ').trim().toUpperCase()
   if (!s) return '—'
-  const base = s.replace(/[\s-]+[0-9][0-9\s/.-]*$/,'').trim()   // quita sufijo de plan al final
-  return base.length >= 3 ? base : s
+  let base = s.replace(/[\s-]+[0-9][0-9\s/.-]*$/,'').trim()   // quita sufijo de plan al final
+  if (base.length < 3) base = s
+  return _ENT_ALIAS[base] || base
 }
 
 function _procesarStats(rows, desde, hasta) {
