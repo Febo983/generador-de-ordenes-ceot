@@ -667,11 +667,19 @@ function drawPagePreq(doc, p, lineas) {
 
 function esVacio(s){return !s||['','-','no'].includes(s.trim().toLowerCase())}
 
-// Grado de gasto quirúrgico del código NUN (columna H): los 2 dígitos que
-// siguen al prefijo de letras. Ej: "MS050301" -> 5. Devuelve null si no matchea.
+// Grado de complejidad del código NUN (columna H): los 2 dígitos que siguen
+// al prefijo de letras. Se normaliza primero con _canonNun() porque los
+// códigos reales vienen con puntos/espacios/modificadores/combos:
+// "MS050301" -> 5 · "Ro.06.03" -> 6 · "RO0703 + 5% rx" -> 7 ·
+// "RO0703 + RO0505" -> 7 (se toma la complejidad más alta del combo).
+// Devuelve null si no hay ningún código reconocible.
 function nunGastoQ(nun){
-  const m=String(nun||'').match(/^[A-Za-z]+(\d{2})/)
-  return m?parseInt(m[1],10):null
+  const c = typeof _canonNun === 'function' ? _canonNun(nun) : String(nun||'').toUpperCase()
+  if(!c) return null
+  const grados = String(c).split('+')
+    .map(p => { const m = p.match(/^\s*[A-Za-z]+[\s.]*(\d{2})/); return m ? parseInt(m[1],10) : null })
+    .filter(n => n !== null && !isNaN(n))
+  return grados.length ? Math.max(...grados) : null
 }
 
 function buildOrdenes(p) {
