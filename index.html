@@ -84,10 +84,23 @@ input[type=text]::placeholder{color:var(--m)}
   border-radius:10px;padding:12px;display:none;flex-direction:column;gap:8px}
 .preq-p.open{display:flex}
 .preq-tit{font-size:11px;font-weight:600;color:var(--go);text-transform:uppercase;letter-spacing:.5px}
-.preq-fix{font-size:11px;color:var(--m)}
 .preq-opt{display:flex;align-items:center;gap:8px}
 .preq-opt input{width:16px;height:16px;accent-color:var(--or);cursor:pointer}
 .preq-opt label{font-size:12px;cursor:pointer}
+.preq-add{display:flex;gap:6px}
+.preq-add input{flex:1;min-width:0;background:rgba(255,255,255,.05);
+  border:.5px solid rgba(232,160,32,.25);border-radius:8px;padding:8px 10px;
+  font-size:12px;color:inherit;font-family:inherit}
+.preq-add button{background:rgba(232,160,32,.18);color:var(--go);border:none;
+  border-radius:8px;padding:8px 14px;font-size:14px;font-weight:700;cursor:pointer;
+  font-family:inherit}
+.preq-add button:active{opacity:.8}
+.preq-chips{display:flex;flex-wrap:wrap;gap:6px}
+.preq-chip{display:flex;align-items:center;gap:6px;background:rgba(232,160,32,.13);
+  color:var(--go);border:.5px solid rgba(232,160,32,.25);border-radius:999px;
+  padding:5px 6px 5px 10px;font-size:11px}
+.preq-chip button{background:none;border:none;color:var(--go);cursor:pointer;
+  font-size:13px;line-height:1;padding:0 2px;font-family:inherit}
 .bpreq-g{width:100%;background:rgba(232,160,32,.18);color:var(--go);border:none;
   border-radius:8px;padding:9px;font-size:13px;font-weight:700;cursor:pointer;
   font-family:inherit;margin-top:4px}
@@ -643,13 +656,6 @@ function drawPagePreq(doc, p, lineas) {
   validLines.forEach((ln,i)=>{
     doc.text(String(ln).trim(),CX,contentStart+i*lineH,{align:'center'})
   })
-  // Sello y firma del doctor
-  const sKeyP=normalizar(p.doctor)
-  const selloP=getSello(p.doctor), firmaP=getFirma(p.doctor)
-  const shP=4.00, swP=4.00, sxP=MR-swP
-  const fhP=3.00, fwP=5.50, fxP=sxP-0.20-fwP
-  if(selloP) addImgFit(doc,selloP,'s_'+sKeyP,sxP,1.80,swP,shP)
-  else if(firmaP) addImgFit(doc,firmaP,'f_'+sKeyP,fxP,1.80,fwP,fhP)
   // Diag. Prequirurgico
   const fechaHoy=new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'})
   doc.setFont('helvetica','normal'); doc.setFontSize(12); doc.setTextColor(0)
@@ -715,16 +721,17 @@ function generarBlob(p) {
   return doc.output('blob')
 }
 
-function generarBlobPreq(p,cardio,clinica) {
+function generarBlobPreq(p,rx,ecg,lab,cardio,clinica,orina,extra) {
   if(typeof jsPDF!=='function') throw new Error('jsPDF no cargó.')
   const doc=new jsPDF({unit:'cm',format:[PW,PH],orientation:'portrait'})
-  const estudios=[
-    ['Rx Tórax','(F)'],
-    ['ECG +','Riesgo Quirúrgico'],
-    ['Hemograma Completo','Glucemia','Uremia','Creatininemia','Coagulograma'],
-  ]
+  const estudios=[]
+  if(rx) estudios.push(['Rx Tórax','(F)'])
+  if(ecg) estudios.push(['ECG +','Riesgo Quirúrgico'])
+  if(lab) estudios.push(['Hemograma Completo','Glucemia','Uremia','Creatininemia','Coagulograma'])
   if(cardio) estudios.push(['Evaluación cardiológica prequirúrgica'])
   if(clinica) estudios.push(['Evaluación clínica / Apto quirúrgico'])
+  if(orina) estudios.push(['Urocultivo','Orina Completa','Antibiograma','Recuentos de Colonias','Hisopado Nasal','Proteínograma'])
+  ;(extra||[]).forEach(txt=>{if(txt&&String(txt).trim()) estudios.push([String(txt).trim()])})
   estudios.forEach((ln,i)=>{if(i>0) doc.addPage();drawPagePreq(doc,p,ln)})
   return doc.output('blob')
 }
@@ -1053,6 +1060,7 @@ function nombreSafe(n){return n.replace(/[^a-zA-Z0-9 ]/g,'_')}
 
 function render(pacientes){
   const lista=document.getElementById('lista')
+  window._preqChips={}
   if(!pacientes.length){lista.innerHTML='<div class="no-r">No se encontraron pacientes.</div>';return}
   lista.innerHTML=''
   pacientes.forEach((p,i)=>{
@@ -1080,9 +1088,17 @@ function render(pacientes){
       </div>
       <div class="preq-p" id="pp${i}">
         <div class="preq-tit">Prequirúrgicos</div>
-        <div class="preq-fix">✓ ECG &nbsp; ✓ Rx tórax &nbsp; ✓ Laboratorio</div>
+        <div class="preq-opt"><input type="checkbox" id="rx${i}" checked><label for="rx${i}">Rx Tórax</label></div>
+        <div class="preq-opt"><input type="checkbox" id="ec${i}" checked><label for="ec${i}">ECG</label></div>
+        <div class="preq-opt"><input type="checkbox" id="lb${i}" checked><label for="lb${i}">Laboratorio</label></div>
         <div class="preq-opt"><input type="checkbox" id="ca${i}"><label for="ca${i}">Evaluación cardiológica</label></div>
         <div class="preq-opt"><input type="checkbox" id="cl${i}"><label for="cl${i}">Evaluación clínica / Apto quirúrgico</label></div>
+        <div class="preq-opt"><input type="checkbox" id="or${i}"><label for="or${i}">Análisis de orina</label></div>
+        <div class="preq-chips" id="pc${i}"></div>
+        <div class="preq-add">
+          <input type="text" id="pi${i}" placeholder="Agregar estudio…" onkeydown="if(event.key==='Enter'){event.preventDefault();preqAddChip(${i})}">
+          <button onclick="preqAddChip(${i})">+</button>
+        </div>
         <button class="bpreq-g" onclick="genPreq(${i})">Generar prequirúrgicos</button>
       </div>
       ${esPresu?`
@@ -1318,6 +1334,31 @@ function genWA(i){
 
 function togglePreq(i){document.getElementById('pp'+i).classList.toggle('open')}
 
+function renderPreqChips(i){
+  const chips=(window._preqChips&&window._preqChips[i])||[]
+  const cont=document.getElementById('pc'+i)
+  if(!cont) return
+  cont.innerHTML=chips.map((c,idx)=>
+    `<span class="preq-chip">${c}<button onclick="preqRemoveChip(${i},${idx})">✕</button></span>`
+  ).join('')
+}
+
+function preqAddChip(i){
+  const input=document.getElementById('pi'+i)
+  const val=(input.value||'').trim()
+  if(!val) return
+  window._preqChips=window._preqChips||{}
+  window._preqChips[i]=window._preqChips[i]||[]
+  window._preqChips[i].push(val)
+  input.value=''
+  renderPreqChips(i)
+}
+
+function preqRemoveChip(i,idx){
+  window._preqChips[i].splice(idx,1)
+  renderPreqChips(i)
+}
+
 // ── Tramite finalizado ──────────────────────────────────────────
 const TRAMITES=new Set()
 function toggleTramite(i){
@@ -1442,9 +1483,14 @@ async function refreshPendientes(){
 function genPreq(i){
   try{
     const p=window._pac[i]
+    const rx=document.getElementById('rx'+i).checked
+    const ecg=document.getElementById('ec'+i).checked
+    const lab=document.getElementById('lb'+i).checked
     const cardio=document.getElementById('ca'+i).checked
     const clinica=document.getElementById('cl'+i).checked
-    descargar(generarBlobPreq(p,cardio,clinica),nombreSafe(p.nombre)+'_PREQ.pdf')
+    const orina=document.getElementById('or'+i).checked
+    const extra=(window._preqChips&&window._preqChips[i])||[]
+    descargar(generarBlobPreq(p,rx,ecg,lab,cardio,clinica,orina,extra),nombreSafe(p.nombre)+'_PREQ.pdf')
     toast('Prequirúrgicos descargados ✓')
   }catch(e){toast('Error: '+(e.message||e));console.error(e)}
 }
