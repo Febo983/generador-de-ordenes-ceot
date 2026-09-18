@@ -606,8 +606,8 @@ function drawPage(doc, p, lineas, conFechaCirugia) {
 
   const sh=5.50, sw=5.50, sx=MR-sw
   const fh=4.00, fw=6.50, fx=sx-0.20-fw
-  if(sello) addImgFit(doc,sello,'s_'+sKey,sx,1.55,sw,sh)
-  else if(firma) addImgFit(doc,firma,'f_'+sKey,fx,1.55,fw,fh)
+  if(sello) addImgFit(doc,sello,'s_'+sKey,sx,3.00,sw,sh)
+  else if(firma) addImgFit(doc,firma,'f_'+sKey,fx,3.00,fw,fh)
 
   doc.setDrawColor(0); doc.setLineWidth(0.6*PT); doc.line(ML,21.10,MR,21.10)
   doc.setFont('helvetica','bold'); doc.setFontSize(5); doc.setTextColor(0)
