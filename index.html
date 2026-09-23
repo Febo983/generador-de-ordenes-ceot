@@ -451,7 +451,7 @@ function filtrar(rows, fechaISO, nombreFiltro) {
   return rows.slice(1).reduce((acc,row)=>{
     if(!row.some(c=>c)) return acc
     let ix
-    if(row[1]?.trim()) ix={n:1,e:2,nu:3,d:4,m:5,co:6,nun:7,dni:8,doc:9,fc:10,cel:11,ed:12,ti:15,el:16,pq:14,hq:17,di:18}
+    if(row[1]?.trim()) ix={n:1,e:2,nu:3,d:4,m:5,co:6,nun:7,dni:8,doc:9,fc:10,cel:11,ed:12,ti:15,el:16,pq:14,hq:17,di:18,rec:19}
     else if(row[17]?.trim()) ix={n:17,e:18,nu:19,d:20,m:21,co:22,nun:23,doc:25,fc:24,cel:27,ti:30,el:32,pq:14}
     else return acc
     const g=i=>(row[i]||'').trim()
@@ -466,7 +466,7 @@ function filtrar(rows, fechaISO, nombreFiltro) {
       material:g(ix.m),codi:g(ix.co),nun:g(ix.nun),dni:g(ix.dni),doctor:g(ix.doc),
       fecha_cirugia:g(ix.fc),celular:g(ix.cel),edad:g(ix.ed),tipo:g(ix.ti),
       elementos:g(ix.el),necesita_preq:g(ix.pq),horasQx:g(ix.hq),diasIntern:g(ix.di),
-      fecha_emision:fechaEmision})
+      recargo:g(ix.rec),fecha_emision:fechaEmision})
     return acc
   },[])
 }
@@ -691,22 +691,25 @@ function nunGastoQ(nun){
 function buildOrdenes(p) {
   const esInter=(p.tipo||'').toUpperCase().includes('INTERNACION')
   const matLineas=esVacio(p.material)?[]:[p.material]
-  const tieneFer=!esVacio(p.elementos)
+  // Muletas/férulas (p.elementos) ya no generan orden acá: se piden como
+  // prequirúrgico (ver render() / genPreq()).
   // NUN con gasto quirúrgico 05 o mayor => dos órdenes de ayudantía
   const gq=nunGastoQ(p.nun)
   const dosAyudantias=gq!==null&&gq>=5
+  // Columna T (recargo NUN: edad extrema, horario/feriado, emergencia, injerto, etc.)
+  // se agrega al código NUN en las 3 líneas de honorarios profesionales.
+  const nunConRecargo=esVacio(p.recargo)?p.nun:p.nun+'  ·  '+p.recargo
   const candidatos=[
     esInter
       ?{ln:['Derechos Sanatoriales e internacion por:',p.codi],cx:true,val:p.codi}
       :{ln:['Derechos Sanatoriales por:',p.codi],cx:false,val:p.codi},
     esInter?{ln:['Honorarios Anestesia por:',p.codi],cx:false,val:p.codi}:null,
-    {ln:['Honorarios Cirujano:',p.nun],cx:false,val:p.nun},
-    {ln:['Honorarios Ayudante:',p.nun],cx:false,val:p.nun},
-    dosAyudantias?{ln:['Honorarios 2do Ayudante:',p.nun],cx:false,val:p.nun}:null,
+    {ln:['Honorarios Cirujano:',nunConRecargo],cx:false,val:p.nun},
+    {ln:['Honorarios Ayudante:',nunConRecargo],cx:false,val:p.nun},
+    dosAyudantias?{ln:['Honorarios 2do Ayudante:',nunConRecargo],cx:false,val:p.nun}:null,
     matLineas.length?{ln:matLineas,cx:false,val:p.material}:null,
   ]
   const ords=candidatos.filter(o=>o && !esVacio(o.val))
-  if(tieneFer) ords.push({ln:[p.elementos],cx:false,diag:'Post-operatorio'})
   return ords
 }
 
@@ -1167,6 +1170,11 @@ function render(pacientes){
         </div>
       </div>`:''}`
     lista.appendChild(div)
+    // Muletas/férulas (p.elementos) se precargan como chip del prequirúrgico.
+    if(!esVacio(p.elementos)){
+      window._preqChips[i]=[p.elementos]
+      renderPreqChips(i)
+    }
   })
   window._pac=pacientes
 }
