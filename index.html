@@ -1039,11 +1039,27 @@ function generarBlobParte(pacientes, fechaISO) {
 
 function descargarDirecto(blob,nombre){
   const url=URL.createObjectURL(blob)
-  const a=document.createElement('a'); a.href=url; a.download=nombre; a.click()
-  setTimeout(()=>URL.revokeObjectURL(url),5000)
+  const a=document.createElement('a'); a.href=url; a.download=nombre
+  a.style.display='none'; document.body.appendChild(a); a.click()
+  setTimeout(()=>{a.remove(); URL.revokeObjectURL(url)},5000)
 }
 
+// En Windows/Mac el navegador tambien soporta navigator.share, pero abre la hoja
+// "Compartir" del sistema (WhatsApp/Outlook/...) en vez de guardar el archivo.
+// Solo usamos compartir en celular/tablet; en escritorio siempre descarga directa.
+const ES_MOVIL=(()=>{
+  try{
+    if(navigator.userAgentData && typeof navigator.userAgentData.mobile==='boolean') return navigator.userAgentData.mobile
+  }catch(e){}
+  const ua=navigator.userAgent||''
+  if(/Android|iPhone|iPod|iPad|Mobile|Silk|Kindle|BlackBerry|Opera Mini|IEMobile/i.test(ua)) return true
+  // iPad con iPadOS 13+ se identifica como Macintosh
+  if(/Macintosh/.test(ua) && navigator.maxTouchPoints>1) return true
+  return false
+})()
+
 async function intentarCompartir(blob,nombre,titulo){
+  if(!ES_MOVIL) return false
   try{
     const file=new File([blob],nombre,{type:'application/pdf'})
     if(navigator.canShare?.({files:[file]})){
