@@ -279,9 +279,10 @@ input[type=text]::placeholder{color:var(--m)}
 .stats-btn-hdr{background:none;border:.5px solid rgba(249,115,22,.35);color:var(--or);border-radius:8px;padding:5px 9px;font-size:13px;cursor:pointer;flex-shrink:0;line-height:1}
 .stats-btn-hdr:active{opacity:.7}
 /* ---- Orden desde captura ---- */
-.cap-p{background:rgba(232,160,32,.06);border:.5px solid rgba(232,160,32,.2);border-radius:10px;
-  padding:12px;display:none;flex-direction:column;gap:10px;margin-top:10px}
-.cap-p.open{display:flex}
+#capCard{display:none}
+#capCard.open{display:block}
+.cap-x{background:none;border:none;color:var(--m);font-size:14px;cursor:pointer;padding:0 2px;line-height:1}
+.cap-p{display:flex;flex-direction:column;gap:10px}
 .cap-drop{display:flex;gap:10px;align-items:center;border:1.5px dashed rgba(249,115,22,.45);border-radius:10px;
   padding:10px;background:rgba(249,115,22,.05);cursor:pointer;min-width:0}
 .cap-drop.over{background:rgba(249,115,22,.14)}
@@ -320,6 +321,7 @@ input[type=text]::placeholder{color:var(--m)}
 <div class="hdr">
   <div class="hdr-ico">🏥</div>
   <div class="hdr-txt"><h1>Generador de Órdenes</h1><p>CEOT – Clínica Colón</p></div>
+  <button class="stats-btn-hdr" onclick="toggleCap()" title="Orden desde captura">📷</button>
   <button class="stats-btn-hdr" onclick="abrirStats()" title="Estadísticas">📊</button>
 </div>
 <div class="hdr-row2">
@@ -356,8 +358,7 @@ input[type=text]::placeholder{color:var(--m)}
 </div>
 
 <div class="card" id="capCard">
-  <div class="card-title">Orden desde captura</div>
-  <button class="bpreq" style="width:100%" onclick="toggleCap()">📷 Leer captura de la ficha</button>
+  <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">Orden desde captura <button class="cap-x" onclick="toggleCap()" title="Cerrar">✕</button></div>
   <div class="cap-p" id="capP">
     <label class="cap-drop" id="capDrop" for="capFile">
       <img id="capThumb" alt="Captura">
@@ -2115,7 +2116,7 @@ function filtrarDocStats(val) {
    marca que campos se leyeron y cuales hay que completar. */
 let _tessLoading=null, _capWorker=null
 
-function toggleCap(){document.getElementById('capP').classList.toggle('open')}
+function toggleCap(){document.getElementById('capCard').classList.toggle('open')}
 
 function capInit(){
   const sel=document.getElementById('capDoc')
@@ -2127,7 +2128,7 @@ function capInit(){
   drop.addEventListener('drop',e=>{const f=e.dataTransfer?.files?.[0]; if(f) capLeer(f)})
   document.getElementById('capFile').addEventListener('change',e=>{const f=e.target.files[0]; if(f) capLeer(f); e.target.value=''})
   document.addEventListener('paste',e=>{
-    if(!document.getElementById('capP').classList.contains('open')) return
+    if(!document.getElementById('capCard').classList.contains('open')) return
     const it=[...(e.clipboardData?.items||[])].find(x=>x.type.startsWith('image/'))
     if(it){e.preventDefault(); capLeer(it.getAsFile())}
   })
