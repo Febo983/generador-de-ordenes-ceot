@@ -308,6 +308,9 @@ input[type=text]::placeholder{color:var(--m)}
 .cap-f.falta .cap-tag.t-falta{display:inline-block;background:rgba(251,191,36,.15);color:#fbbf24}
 .cap-aviso{font-size:11.5px;color:#fbbf24;line-height:1.45;display:none}
 .cap-aviso.on{display:block}
+.cap-rpbtn{display:flex;gap:6px;margin-top:2px}
+.cap-rpbtn button{background:rgba(232,160,32,.13);color:var(--go);border:.5px solid rgba(232,160,32,.25);border-radius:8px;padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit}
+.cap-rpbtn button:active{opacity:.8}
 .cap-acc{display:flex;gap:8px}
 .cap-acc button{flex:1;border:none;border-radius:8px;padding:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
 .cap-ver{background:rgba(232,160,32,.18);color:var(--go)}
@@ -372,7 +375,8 @@ input[type=text]::placeholder{color:var(--m)}
       <div class="cap-f" id="cfFecha"><label for="capFecha">Fecha <span class="cap-tag t-ok">leído · revisar</span><span class="cap-tag t-falta">revisar</span></label><input type="text" id="capFecha" placeholder="dd/mm/aaaa" inputmode="numeric" autocomplete="off"></div>
       <div class="cap-f" id="cfAf"><label for="capAf">Nº de afiliado <span style="opacity:.6">(opcional)</span></label><input type="text" id="capAf" autocomplete="off" inputmode="numeric"></div>
       <div class="cap-f" id="cfDoc"><label for="capDoc">Profesional <span class="cap-tag t-ok">sello detectado</span><span class="cap-tag t-falta">elegir</span></label><select id="capDoc"></select></div>
-      <div class="cap-f full" id="cfRp"><label for="capRp">Texto del Rp/ <span class="cap-tag t-ok">leído</span><span class="cap-tag t-falta">completar</span></label><textarea id="capRp" rows="4" spellcheck="false"></textarea></div>
+      <div class="cap-f full" id="cfRp"><label for="capRp">Texto del Rp/ <span class="cap-tag t-ok">leído · redactado</span><span class="cap-tag t-falta">completar</span></label><textarea id="capRp" rows="4" spellcheck="false"></textarea>
+        <div class="cap-rpbtn"><button type="button" onclick="capRedactar()">✨ Redactar</button><button type="button" onclick="capVerOriginal()">↩ Texto leído</button></div></div>
     </div>
     <div class="cap-aviso" id="capAviso"></div>
     <div class="cap-acc">
@@ -2257,6 +2261,66 @@ function capParsear(texto){
     truncado:/(\.\.\.|…)\s*$/.test(rp)}
 }
 
+/* Redactor del Rp/: toma el texto de la evolucion (abreviado, con errores de lectura) y arma una
+   frase clara. Son reglas fijas, sin IA ni conexion: corrige errores tipicos del OCR, expande
+   abreviaturas medicas comunes, ordena en oraciones y agrega mayusculas y puntos. Lo que no
+   reconoce lo deja como esta, por eso el resultado siempre se revisa. */
+const _PARTES=[['rodilla','f'],['muñeca','f'],['mano','f'],['cadera','f'],['pierna','f'],['pantorrilla','f'],
+  ['rótula','f'],['espalda','f'],['columna','f'],['clavícula','f'],['cabeza','f'],
+  ['codo','m'],['hombro','m'],['pie','m'],['tobillo','m'],['dedo','m'],['brazo','m'],['antebrazo','m'],
+  ['muslo','m'],['cuello','m'],['talón','m'],['puño','m']]
+const _ABREV=[
+  [/\bdoro\b/gi,'dolor'],[/\bgolp[eé](?=\s|$|[.,])/gi,'golpe'],[/\bs\/\s*/gi,'sin '],[/\bc\/\s*/gi,'con '],[/\bp\/\s*/gi,'para '],
+  [/\bpte\.?(?=\s|$)/gi,'paciente'],[/\brx\s+(?:de\s+)?/gi,'radiografía de '],[/\btt?to\.?(?=\s|$)/gi,'tratamiento'],
+  [/\bcx\b/gi,'cirugía'],[/\bdx\b/gi,'diagnóstico'],[/\bmmii\b/gi,'miembros inferiores'],
+  [/\bmmss\b/gi,'miembros superiores'],[/\brmn\b/gi,'resonancia magnética'],[/\btac\b/gi,'tomografía'],
+  [/\bfx\b/gi,'fractura'],[/\bbilat\.?(?=\s|$)/gi,'bilateral'],[/\bpost\s?-?op\b/gi,'postoperatorio'],
+  [/\b(\d+)\s*sem\.?(?=\s|$)/gi,'$1 semanas'],[/\bex[aá]men\s+fis\.?(?=\s|$)/gi,'examen físico']
+]
+function redactarDiagnostico(txt){
+  let t=(txt||'').replace(/…|\.{2,}/g,' ').replace(/\s*\n+\s*/g,'. ').replace(/\s+/g,' ').trim()
+  if(!t) return ''
+  _ABREV.forEach(([re,to])=>{t=t.replace(re,to)})
+  // "rodilla izq" / "codo der": la terminacion depende del genero de la parte del cuerpo
+  _PARTES.forEach(([n,g])=>{
+    const nn=n.normalize('NFD').replace(/[̀-ͯ]/g,'')
+    const re=new RegExp('\\b('+n+'|'+nn+')\\s+(izq(?:uierd[oa])?|[il1]\\s?[2z]\\s?[qg]|der(?:ech[oa])?|dcha)\\b\\.?','gi')
+    t=t.replace(re,(m,part,l)=>{
+      const izq=/^(i|l|1)/i.test(l)
+      return n+' '+(izq?(g==='f'?'izquierda':'izquierdo'):(g==='f'?'derecha':'derecho'))
+    })
+    // "golpe de rodilla" -> "golpe en la rodilla"
+    t=t.replace(new RegExp('\\bgolpe\\s+(?:de|en)\\s+(?:la\\s+|el\\s+)?('+n+'|'+nn+')\\b','gi'),
+      'golpe en '+(g==='f'?'la ':'el ')+n)
+  })
+  t=t.replace(/\bizq\.?(?=\s|$|[.,])/gi,'izquierdo').replace(/\b(?:dcha|der)\.?(?=\s|$|[.,])/gi,'derecho')
+  // "al examen" arranca una oracion nueva
+  t=t.replace(/([^.;]\s+)(al\s+ex[aá]men)/gi,(m,a,b)=>a.trimEnd()+'. '+b)
+  const reAlta=/^(.*?)[\s,]*\b(?:se\s+da\s+(?:de\s+)?alta|da\s+(?:de\s+)?alta|dar\s+(?:de\s+)?alta|alta(?:\s+m[eé]dica)?)\s*$/i
+  const out=[]
+  t.split(/\s*[.;]\s+|\s*[.;]\s*$/).map(x=>x.trim()).filter(Boolean).forEach(sen=>{
+    const m=sen.match(reAlta)
+    const partes=m?[m[1].trim(),'Se otorga el alta médica']:[sen]
+    partes.filter(Boolean).forEach(x=>{
+      x=x.replace(/^(al\s+ex[aá]men(?:\s+f[ií]sico)?)\s+(?=\S)/i,(mm,a)=>a+', ')
+      out.push(x.charAt(0).toUpperCase()+x.slice(1))
+    })
+  })
+  return out.join('. ')+'.'
+}
+
+let _capRpOrig=''
+function capRedactar(){
+  const ta=document.getElementById('capRp')
+  if(!_capRpOrig) _capRpOrig=ta.value
+  ta.value=redactarDiagnostico(ta.value)
+  toast('Texto redactado ✓')
+}
+function capVerOriginal(){
+  if(!_capRpOrig){toast('No hay texto leído para volver'); return}
+  document.getElementById('capRp').value=_capRpOrig
+}
+
 function capMarcar(id,ok){
   const f=document.getElementById(id); f.classList.toggle('ok',!!ok); f.classList.toggle('falta',!ok)
 }
@@ -2268,12 +2332,12 @@ function capRevisarDoc(){
 function capAplicar(r){
   const set=(id,v)=>{document.getElementById(id).value=v||''}
   set('capNombre',r.nombre); set('capEntidad',r.entidad); set('capFecha',r.fecha)
-  set('capDoc',r.doctor); set('capRp',r.rp)
+  set('capDoc',r.doctor); _capRpOrig=r.rp; set('capRp',redactarDiagnostico(r.rp))
   capMarcar('cfNombre',!!r.nombre); capMarcar('cfEntidad',!!r.entidad)
   capMarcar('cfFecha',!!r.fecha); capMarcar('cfDoc',!!r.doctor); capMarcar('cfRp',!!r.rp)
   const av=[]
   if(r.truncado) av.push('La evolución termina en “…”: puede faltar texto. Abrila completa y volvé a capturar, o completala acá.')
-  av.push('Revisá lo leído antes de generar: el lector puede confundir letras y números (fechas, “izq”, “dolor”).')
+  av.push('Revisá lo leído y el texto redactado antes de generar: el lector puede confundir letras y números. “↩ Texto leído” vuelve al original.')
   const el=document.getElementById('capAviso'); el.textContent=av.join(' '); el.classList.add('on')
   const n=[r.nombre,r.entidad,r.fecha,r.doctor,r.rp].filter(Boolean).length
   capEstado(n+' de 5 datos reconocidos · leída en este equipo',n>0)
@@ -2330,6 +2394,7 @@ function capDescargar(){
 }
 
 function capLimpiar(){
+  _capRpOrig=''
   ;['capNombre','capEntidad','capFecha','capAf','capDoc','capRp'].forEach(id=>document.getElementById(id).value='')
   ;['cfNombre','cfEntidad','cfFecha','cfDoc','cfRp'].forEach(id=>document.getElementById(id).classList.remove('ok','falta'))
   const th=document.getElementById('capThumb'); th.removeAttribute('src'); th.style.display='none'
