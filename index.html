@@ -278,6 +278,41 @@ input[type=text]::placeholder{color:var(--m)}
 .pw-cancel{background:rgba(255,255,255,.05);color:var(--m);border:none;border-radius:10px;padding:9px;font-size:12px;cursor:pointer;font-family:inherit;width:100%}
 .stats-btn-hdr{background:none;border:.5px solid rgba(249,115,22,.35);color:var(--or);border-radius:8px;padding:5px 9px;font-size:13px;cursor:pointer;flex-shrink:0;line-height:1}
 .stats-btn-hdr:active{opacity:.7}
+/* ---- Orden desde captura ---- */
+.cap-p{background:rgba(232,160,32,.06);border:.5px solid rgba(232,160,32,.2);border-radius:10px;
+  padding:12px;display:none;flex-direction:column;gap:10px;margin-top:10px}
+.cap-p.open{display:flex}
+.cap-drop{display:flex;gap:10px;align-items:center;border:1.5px dashed rgba(249,115,22,.45);border-radius:10px;
+  padding:10px;background:rgba(249,115,22,.05);cursor:pointer;min-width:0}
+.cap-drop.over{background:rgba(249,115,22,.14)}
+.cap-drop img{width:88px;max-height:64px;object-fit:cover;object-position:top;border-radius:6px;border:.5px solid var(--b);flex-shrink:0;display:none}
+.cap-drop-t{font-size:12px;line-height:1.4;min-width:0}
+.cap-drop-t b{display:block;font-size:13px;color:var(--go);margin-bottom:2px}
+.cap-drop-t span{color:var(--m)}
+.cap-est{font-size:12px;color:var(--m);display:none}
+.cap-est.ok{color:#4ade80}
+.cap-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cap-f{display:flex;flex-direction:column;gap:4px;min-width:0}
+.cap-f.full{grid-column:1/-1}
+.cap-f label{font-size:11px;color:var(--m);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.cap-f input,.cap-f select,.cap-f textarea{width:100%;min-width:0;background:rgba(255,255,255,.05);
+  border:.5px solid var(--b);border-radius:9px;padding:9px 10px;font-size:13px;color:var(--t);
+  outline:none;font-family:inherit}
+.cap-f select option{background:#1c1c1c;color:#fafafa}
+.cap-f textarea{resize:vertical;line-height:1.45;min-height:84px}
+.cap-f input:focus,.cap-f select:focus,.cap-f textarea:focus{border-color:var(--or)}
+.cap-f.falta input,.cap-f.falta select,.cap-f.falta textarea{border-color:rgba(251,191,36,.6)}
+.cap-tag{font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border-radius:999px;padding:1px 7px;display:none}
+.cap-f.ok .cap-tag.t-ok{display:inline-block;background:rgba(74,222,128,.14);color:#4ade80}
+.cap-f.falta .cap-tag.t-falta{display:inline-block;background:rgba(251,191,36,.15);color:#fbbf24}
+.cap-aviso{font-size:11.5px;color:#fbbf24;line-height:1.45;display:none}
+.cap-aviso.on{display:block}
+.cap-acc{display:flex;gap:8px}
+.cap-acc button{flex:1;border:none;border-radius:8px;padding:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
+.cap-ver{background:rgba(232,160,32,.18);color:var(--go)}
+.cap-dl{background:var(--or);color:#fff}
+.cap-lim{flex:0 0 auto!important;background:rgba(255,255,255,.06);color:var(--m)}
+.cap-acc button:disabled{opacity:.4;cursor:default}
 </style>
 </head>
 <body>
@@ -318,6 +353,33 @@ input[type=text]::placeholder{color:var(--m)}
     </div>
   </div>
   <button class="btn-main" id="bBuscar" onclick="buscar()">Buscar pacientes</button>
+</div>
+
+<div class="card" id="capCard">
+  <div class="card-title">Orden desde captura</div>
+  <button class="bpreq" style="width:100%" onclick="toggleCap()">📷 Leer captura de la ficha</button>
+  <div class="cap-p" id="capP">
+    <label class="cap-drop" id="capDrop" for="capFile">
+      <img id="capThumb" alt="Captura">
+      <div class="cap-drop-t"><b>Pegá (Ctrl+V), soltá o elegí la captura</b><span>La imagen se lee en este equipo, no se sube a ningún servidor.</span></div>
+    </label>
+    <input type="file" id="capFile" accept="image/*" style="display:none">
+    <div class="cap-est" id="capEst"></div>
+    <div class="cap-grid">
+      <div class="cap-f full" id="cfNombre"><label for="capNombre">Apellido y nombre <span class="cap-tag t-ok">leído</span><span class="cap-tag t-falta">completar</span></label><input type="text" id="capNombre" autocomplete="off" spellcheck="false"></div>
+      <div class="cap-f" id="cfEntidad"><label for="capEntidad">Entidad <span class="cap-tag t-ok">leído</span><span class="cap-tag t-falta">completar</span></label><input type="text" id="capEntidad" autocomplete="off" spellcheck="false"></div>
+      <div class="cap-f" id="cfFecha"><label for="capFecha">Fecha <span class="cap-tag t-ok">leído · revisar</span><span class="cap-tag t-falta">revisar</span></label><input type="text" id="capFecha" placeholder="dd/mm/aaaa" inputmode="numeric" autocomplete="off"></div>
+      <div class="cap-f" id="cfAf"><label for="capAf">Nº de afiliado <span style="opacity:.6">(opcional)</span></label><input type="text" id="capAf" autocomplete="off" inputmode="numeric"></div>
+      <div class="cap-f" id="cfDoc"><label for="capDoc">Profesional <span class="cap-tag t-ok">sello detectado</span><span class="cap-tag t-falta">elegir</span></label><select id="capDoc"></select></div>
+      <div class="cap-f full" id="cfRp"><label for="capRp">Texto del Rp/ <span class="cap-tag t-ok">leído</span><span class="cap-tag t-falta">completar</span></label><textarea id="capRp" rows="4" spellcheck="false"></textarea></div>
+    </div>
+    <div class="cap-aviso" id="capAviso"></div>
+    <div class="cap-acc">
+      <button class="cap-ver" id="capVer" onclick="capVer()">👁 Ver</button>
+      <button class="cap-dl" id="capDl" onclick="capDescargar()">⬇ Descargar PDF</button>
+      <button class="cap-lim" onclick="capLimpiar()" title="Limpiar">🗑</button>
+    </div>
+  </div>
 </div>
 
 <div class="estado" id="estado"></div>
@@ -605,10 +667,16 @@ function drawPage(doc, p, lineas, conFechaCirugia) {
   }
 
   doc.setFont('helvetica','normal'); doc.setFontSize(7)
-  const dgY=Math.max(19.25,yc+0.30)
-  const dgLines=doc.splitTextToSize('Dg: '+(p.diagnostico||''),MR-LBL-0.35)
-  dgLines.slice(0,5).forEach((l,i)=>doc.text(l,LBL,dgY+i*0.38))
-  let ye=Math.max(19.63,dgY+dgLines.slice(0,5).length*0.38)
+  let ye
+  if(p.sinDg){
+    // orden desde captura: solo Rp/ + fecha, sin linea de diagnostico
+    ye=Math.max(19.63,yc+0.30)
+  } else {
+    const dgY=Math.max(19.25,yc+0.30)
+    const dgLines=doc.splitTextToSize('Dg: '+(p.diagnostico||''),MR-LBL-0.35)
+    dgLines.slice(0,5).forEach((l,i)=>doc.text(l,LBL,dgY+i*0.38))
+    ye=Math.max(19.63,dgY+dgLines.slice(0,5).length*0.38)
+  }
   if(p.fecha_cirugia){doc.text('Fecha de cirugia: '+p.fecha_cirugia,LBL,ye);ye+=0.38}
   doc.text('Fecha: '+fecha,LBL,ye)
 
@@ -2039,6 +2107,233 @@ function filtrarDocStats(val) {
   const h=new Date().getHours()
   el.textContent = h >= 12 && h < 16 ? '🌤️ Buenas tardes Juli!' : '☀️ Buen día Marce!'
 })()
+
+/* ===== Orden desde captura =====
+   Captura de la ficha del sistema (Dat. Pers. + Evolucion) -> orden con Rp/ y el texto de la
+   evolucion. OCR con Tesseract.js en el navegador (se carga recien al usar el panel).
+   El OCR comete errores en texto chico (fechas, letras): por eso todo queda editable y se
+   marca que campos se leyeron y cuales hay que completar. */
+let _tessLoading=null, _capWorker=null
+
+function toggleCap(){document.getElementById('capP').classList.toggle('open')}
+
+function capInit(){
+  const sel=document.getElementById('capDoc')
+  sel.innerHTML='<option value="">— elegir —</option>'+
+    SK.slice().sort().map(k=>`<option value="${k}">${k.charAt(0).toUpperCase()+k.slice(1)}</option>`).join('')
+  const drop=document.getElementById('capDrop')
+  ;['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over')}))
+  ;['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over')}))
+  drop.addEventListener('drop',e=>{const f=e.dataTransfer?.files?.[0]; if(f) capLeer(f)})
+  document.getElementById('capFile').addEventListener('change',e=>{const f=e.target.files[0]; if(f) capLeer(f); e.target.value=''})
+  document.addEventListener('paste',e=>{
+    if(!document.getElementById('capP').classList.contains('open')) return
+    const it=[...(e.clipboardData?.items||[])].find(x=>x.type.startsWith('image/'))
+    if(it){e.preventDefault(); capLeer(it.getAsFile())}
+  })
+  document.getElementById('capDoc').addEventListener('change',capRevisarDoc)
+}
+document.addEventListener('DOMContentLoaded',capInit)
+
+function cargarTesseract(){
+  if(window.Tesseract) return Promise.resolve()
+  if(_tessLoading) return _tessLoading
+  _tessLoading=new Promise((res,rej)=>{
+    const sc=document.createElement('script')
+    sc.src='https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.1/tesseract.min.js'
+    sc.onload=res
+    sc.onerror=()=>{_tessLoading=null; rej(new Error('No se pudo cargar el lector de imágenes. Revisá la conexión.'))}
+    document.head.appendChild(sc)
+  })
+  return _tessLoading
+}
+
+function capCargarImg(file){
+  return new Promise((res,rej)=>{
+    const url=URL.createObjectURL(file), img=new Image()
+    img.onload=()=>res(img)
+    img.onerror=()=>rej(new Error('No se pudo abrir la imagen.'))
+    img.src=url
+  })
+}
+
+// La captura es chica y de texto fino: se agranda hasta 3x y se estira el contraste en gris.
+function capPreparar(img){
+  const esc=Math.max(1,Math.min(3,2400/img.naturalWidth))
+  const cv=document.createElement('canvas')
+  cv.width=Math.round(img.naturalWidth*esc); cv.height=Math.round(img.naturalHeight*esc)
+  const ctx=cv.getContext('2d')
+  ctx.imageSmoothingQuality='high'
+  ctx.drawImage(img,0,0,cv.width,cv.height)
+  const id=ctx.getImageData(0,0,cv.width,cv.height), d=id.data
+  let mn=255,mx=0
+  for(let i=0;i<d.length;i+=4){
+    const g=(d[i]*.299+d[i+1]*.587+d[i+2]*.114)|0
+    d[i]=g; if(g<mn)mn=g; if(g>mx)mx=g
+  }
+  const rng=Math.max(1,mx-mn)
+  for(let i=0;i<d.length;i+=4){
+    const g=Math.max(0,Math.min(255,((d[i]-mn)*255/rng)|0))
+    d[i]=d[i+1]=d[i+2]=g
+  }
+  ctx.putImageData(id,0,0)
+  return cv
+}
+
+function capEstado(msg,ok){
+  const el=document.getElementById('capEst')
+  if(!msg){el.style.display='none';return}
+  el.style.display='block'; el.classList.toggle('ok',!!ok); el.textContent=msg
+}
+
+async function capLeer(file){
+  try{
+    capEstado('Preparando la imagen…')
+    const img=await capCargarImg(file)
+    const th=document.getElementById('capThumb'); th.src=img.src; th.style.display='block'
+    capEstado('Cargando el lector (la primera vez tarda unos segundos)…')
+    await cargarTesseract()
+    if(!_capWorker){
+      _capWorker=await Tesseract.createWorker('spa',1,{logger:m=>{
+        if(m.status==='recognizing text') capEstado('Leyendo la captura… '+Math.round((m.progress||0)*100)+'%')
+        else if(/loading|initializ/i.test(m.status||'')) capEstado('Preparando el lector de español…')
+      }})
+    }
+    await _capWorker.setParameters({tessedit_pageseg_mode:'6',preserve_interword_spaces:'1'})
+    const {data}=await _capWorker.recognize(capPreparar(img))
+    window._capTexto=data.text||''   // texto crudo del OCR, para diagnosticar lecturas raras
+    capAplicar(capParsear(window._capTexto))
+  }catch(e){
+    console.error(e); capEstado('Error: '+(e.message||e)); toast('Error al leer la captura')
+  }
+}
+
+function capParsear(texto){
+  const lineas=texto.split(/\r?\n/).map(l=>l.replace(/\s+/g,' ').trim()).filter(Boolean)
+  const limpiar=v=>v.split(/[=*_]{2,}/)[0].replace(/[\[\]|]+/g,' ').replace(/\s+/g,' ').trim()
+  // valor de un campo: lo que sigue a la etiqueta en la misma linea, o la linea siguiente
+  const campo=re=>{
+    for(let i=0;i<lineas.length;i++){
+      const m=lineas[i].match(re); if(!m) continue
+      const v=limpiar(m[1]||''); if(v) return v
+      if(lineas[i+1]) {const n=limpiar(lineas[i+1]); if(n) return n}
+    }
+    return ''
+  }
+  const ape=campo(/\bap\w{1,4}do\b\s*[:.]?\s*(.*)$/i)
+  const nom=campo(/^\W*nombre\b\s*[:.]?\s*(.*)$/i)
+  const entidad=campo(/\bobras?[\s.]*[s5]?[\s.]*:\s*(.*)$/i)
+
+  // Evolucion: todo lo que esta debajo del encabezado "Fecha | Detalle"
+  let ix=lineas.findIndex(l=>/\bdetalle\b/i.test(l))
+  const reg=ix>=0?lineas.slice(ix+1):[]
+  const reFecha=/\b(\d{1,2})\s*[\/\-.]\s*(\d{1,2})\s*[\/\-.]\s*(\d{4})\b/
+  let fecha=''
+  for(const l of reg){
+    const m=l.match(reFecha)
+    if(m){fecha=m[1].padStart(2,'0')+'/'+m[2].padStart(2,'0')+'/'+m[3]; break}
+  }
+  // Profesional: "dr mazzola" dentro de la evolucion
+  let doctor=''
+  for(const l of reg){
+    const m=l.match(/\bdr\.?a?\s+([a-zñáéíóú]+)/i)
+    if(m){const k=normalizar(m[1]); if(SK.includes(k)){doctor=k;break}}
+  }
+  if(!doctor){const k=normalizar(reg.join(' ')); if(SK.includes(k)) doctor=k}
+
+  const rpL=[]
+  for(let l of reg){
+    l=l.replace(reFecha,' ').replace(/^[\s|\[\]\-—_]+|[\s|\[\]]+$/g,'').trim()
+    if(!l||/^[\W_]*$/.test(l)) continue
+    if(/^profesional\b[\s:.-]*$/i.test(l)) continue
+    {const m=l.match(/^(.*?)\bdr\.?a?\s+[a-zñáéíóú]+$/i)
+     if(m&&m[1].trim().split(/\s+/).filter(Boolean).length<=1) continue}   // linea del profesional (con basura delante)
+    if(l.length>12) l=l.replace(/\s+[A-Z]$/,'')   // letra suelta que deja la barra de scroll
+    rpL.push(l)
+  }
+  const rp=rpL.join('\n')
+  return {nombre:[ape,nom].filter(Boolean).join(' '),entidad,fecha,doctor,rp,
+    truncado:/(\.\.\.|…)\s*$/.test(rp)}
+}
+
+function capMarcar(id,ok){
+  const f=document.getElementById(id); f.classList.toggle('ok',!!ok); f.classList.toggle('falta',!ok)
+}
+function capRevisarDoc(){
+  const ok=!!document.getElementById('capDoc').value
+  capMarcar('cfDoc',ok)
+}
+
+function capAplicar(r){
+  const set=(id,v)=>{document.getElementById(id).value=v||''}
+  set('capNombre',r.nombre); set('capEntidad',r.entidad); set('capFecha',r.fecha)
+  set('capDoc',r.doctor); set('capRp',r.rp)
+  capMarcar('cfNombre',!!r.nombre); capMarcar('cfEntidad',!!r.entidad)
+  capMarcar('cfFecha',!!r.fecha); capMarcar('cfDoc',!!r.doctor); capMarcar('cfRp',!!r.rp)
+  const av=[]
+  if(r.truncado) av.push('La evolución termina en “…”: puede faltar texto. Abrila completa y volvé a capturar, o completala acá.')
+  av.push('Revisá lo leído antes de generar: el lector puede confundir letras y números (fechas, “izq”, “dolor”).')
+  const el=document.getElementById('capAviso'); el.textContent=av.join(' '); el.classList.add('on')
+  const n=[r.nombre,r.entidad,r.fecha,r.doctor,r.rp].filter(Boolean).length
+  capEstado(n+' de 5 datos reconocidos · leída en este equipo',n>0)
+}
+
+function capLeerForm(){
+  const g=id=>document.getElementById(id).value.trim()
+  return {nombre:g('capNombre'),entidad:g('capEntidad'),fecha:g('capFecha'),num:g('capAf'),
+    doctor:g('capDoc'),rp:document.getElementById('capRp').value.replace(/\s+$/,'')}
+}
+
+function capValidar(f){
+  const faltan=[]
+  if(!f.nombre) faltan.push('apellido y nombre')
+  if(!f.doctor) faltan.push('profesional (para el sello)')
+  if(!f.rp.trim()) faltan.push('texto del Rp/')
+  return faltan
+}
+
+function generarBlobCaptura(f){
+  if(typeof jsPDF!=='function') throw new Error('jsPDF no cargó. Verificá tu conexión y recargá la página.')
+  const doc=new jsPDF({unit:'cm',format:[PW,PH],orientation:'portrait'})
+  const lineas=f.rp.split('\n')
+  // El Rp/ tiene que terminar antes de la zona del sello (~13,4 cm desde arriba)
+  doc.setFont('helvetica','normal'); doc.setFontSize(8)
+  const mw=MR-(LBL+0.35)-0.35
+  const nl=lineas.reduce((a,l)=>a+(l.trim()?doc.splitTextToSize(l.trim(),mw).length:0),0)
+  if(6.87+nl*0.40>13.4) throw new Error('El texto es muy largo para una hoja (unas 15 líneas). Acortalo.')
+  const hoy=new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'})
+  drawPage(doc,{nombre:f.nombre,entidad:f.entidad,num:f.num,doctor:f.doctor,
+    fecha_emision:f.fecha||hoy,diagnostico:'',fecha_cirugia:'',sinDg:true},lineas,false)
+  return doc.output('blob')
+}
+
+function capVer(){
+  try{
+    const f=capLeerForm(), fl=capValidar(f)
+    if(fl.length){toast('Falta: '+fl.join(', ')); return}
+    window.open(URL.createObjectURL(generarBlobCaptura(f)),'_blank')
+  }catch(e){toast('Error: '+(e.message||e)); console.error(e)}
+}
+
+function capDescargar(){
+  const f=capLeerForm(), fl=capValidar(f)
+  if(fl.length){toast('Falta: '+fl.join(', ')); return}
+  btnBusy('capDl','…')
+  setTimeout(async()=>{
+    try{
+      await descargar(generarBlobCaptura(f),'Orden_'+nombreSafe(f.nombre)+'.pdf')
+      toast('PDF listo ✓')
+    }catch(e){toast('Error: '+(e.message||e)); console.error(e)}
+    btnReset('capDl','⬇ Descargar PDF')
+  },30)
+}
+
+function capLimpiar(){
+  ;['capNombre','capEntidad','capFecha','capAf','capDoc','capRp'].forEach(id=>document.getElementById(id).value='')
+  ;['cfNombre','cfEntidad','cfFecha','cfDoc','cfRp'].forEach(id=>document.getElementById(id).classList.remove('ok','falta'))
+  const th=document.getElementById('capThumb'); th.removeAttribute('src'); th.style.display='none'
+  document.getElementById('capAviso').classList.remove('on'); capEstado('')
+}
 </script>
 
 <!-- Carita sonriente flotante -->
